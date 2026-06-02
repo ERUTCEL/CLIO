@@ -7,6 +7,7 @@ from api.schemas import IngestRequest, IngestResponse, JobStatusResponse
 from ingestion.sources.local_folder import LocalFolderSource
 from ingestion.sources.notion_reader import NotionReader
 from retrieval.embedder import Embedder
+from retrieval.metadata_db import MetadataDB
 from retrieval.vector_store import VectorStore
 
 router = APIRouter(prefix="/ingest", tags=["ingest"])
@@ -33,6 +34,7 @@ def _run_local_ingest(job_id: str, path: str) -> None:
             texts = [c[0] for c in chunks]
             embeddings = embedder.embed(texts)
             store.add(chunks, embeddings)
+            MetadataDB().upsert_chunks(chunks)
 
         _JOBS[job_id]["status"] = "done"
         _JOBS[job_id]["processed"] = _JOBS[job_id]["total"]
@@ -55,6 +57,7 @@ def _run_notion_ingest(job_id: str, token: str, database_id: str) -> None:
             texts = [c[0] for c in chunks]
             embeddings = embedder.embed(texts)
             store.add(chunks, embeddings)
+            MetadataDB().upsert_chunks(chunks)
 
         _JOBS[job_id]["status"] = "done"
         _JOBS[job_id]["processed"] = _JOBS[job_id]["total"]

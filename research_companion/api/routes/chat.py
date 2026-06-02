@@ -1,3 +1,5 @@
+from functools import lru_cache
+
 from fastapi import APIRouter
 
 from api.schemas import ChatRequest, ChatResponse, Citation
@@ -10,7 +12,8 @@ from retrieval.vector_store import VectorStore
 router = APIRouter(prefix="/chat", tags=["chat"])
 
 
-def _build_pipeline() -> RAGPipeline:
+@lru_cache(maxsize=1)
+def _get_pipeline() -> RAGPipeline:
     embedder = Embedder()
     store = VectorStore()
     search = HybridSearch(embedder=embedder, store=store)
@@ -20,7 +23,7 @@ def _build_pipeline() -> RAGPipeline:
 
 @router.post("", response_model=ChatResponse)
 async def chat(req: ChatRequest) -> ChatResponse:
-    pipeline = _build_pipeline()
+    pipeline = _get_pipeline()
 
     f = req.filters
     filters = SearchFilters(

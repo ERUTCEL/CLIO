@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, Query
+from functools import lru_cache
+
+from fastapi import APIRouter, Query
 
 from api.schemas import SearchResponse, SearchResult
 from retrieval.embedder import Embedder
@@ -8,6 +10,7 @@ from retrieval.vector_store import VectorStore
 router = APIRouter(prefix="/search", tags=["search"])
 
 
+@lru_cache(maxsize=1)
 def _get_search() -> HybridSearch:
     return HybridSearch(embedder=Embedder(), store=VectorStore())
 
@@ -20,8 +23,8 @@ async def search_papers(
     author: str | None = Query(None),
     importance_min: int | None = Query(None, ge=1, le=3),
     limit: int = Query(10, ge=1, le=50),
-    search: HybridSearch = Depends(_get_search),
 ) -> SearchResponse:
+    search = _get_search()
     filters = SearchFilters(
         year_from=year_from or 0,
         year_to=year_to or 0,
