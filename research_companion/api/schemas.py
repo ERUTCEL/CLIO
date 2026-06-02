@@ -65,14 +65,14 @@ class ChatRequest(BaseModel):
 
 
 class Citation(BaseModel):
+    index: int
     title: str
     source_type: str
     is_user_memo: bool
-    parse_quality: str
+    parse_quality_warning: bool = False
     author: str | None = None
     year: int | None = None
     page: int | None = None
-    bbox: Any = None
     doi: str | None = None
     source: str | None = None
     collection: str | None = None

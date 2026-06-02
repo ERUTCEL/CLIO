@@ -1,9 +1,11 @@
+import json
 import os
+import re
 
 import anthropic
 import structlog
 
-from generation.citation_formatter import compute_confidence, format_citations
+from generation.citation_formatter import compute_confidence
 from generation.prompt_builder import build_messages
 from retrieval.hybrid_search import HybridSearch, SearchFilters
 from retrieval.reranker import Reranker
@@ -12,6 +14,13 @@ log = structlog.get_logger()
 
 _MODEL = "claude-sonnet-4-6"
 _MAX_TOKENS = 2048
+
+
+def parse_llm_response(raw: str) -> dict:
+    match = re.search(r"```json\s*(.*?)\s*```", raw, re.DOTALL)
+    if match:
+        return json.loads(match.group(1))
+    return json.loads(raw)
 
 
 class RAGPipeline:
@@ -64,10 +73,18 @@ class RAGPipeline:
             system=system,
             messages=messages,
         )
-        answer_text = response.content[0].text
 
-        return {
-            "answer": answer_text,
-            "citations": format_citations(results),
-            "confidence": confidence,
-        }
+        try:
+            parsed = parse_llm_response(response.content[0].text)
+            return {
+                "answer": parsed["answer"],
+                "citations": parsed.get("citations", []),
+                "confidence": confidence,
+            }
+        except (json.JSONDecodeError, KeyError) as exc:
+            log.warning("llm_response_parse_failed", error=str(exc))
+            return {
+                "answer": response.content[0].text,
+                "citations": [],
+                "confidence": confidence,
+            }

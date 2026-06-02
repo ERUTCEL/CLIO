@@ -35,7 +35,7 @@ def build_context_block(results: list[dict]) -> str:
             citation_hint += " ⚠️ low parse quality"
 
         parts.append(
-            f"[SOURCE {i} | {label} | {citation_hint}]\n{r['text']}\n"
+            f"[{i} | {label} | {citation_hint}]\n{r['text']}\n"
         )
     return "\n---\n".join(parts)
 
