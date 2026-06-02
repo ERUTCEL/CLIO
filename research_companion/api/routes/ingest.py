@@ -74,6 +74,16 @@ async def start_ingest(req: IngestRequest, background_tasks: BackgroundTasks) ->
     if req.source == "local_folder":
         if not req.path:
             raise HTTPException(status_code=422, detail="path is required for local_folder source")
+        import os
+        if not os.path.isdir(req.path):
+            raise HTTPException(status_code=422, detail=f"경로를 찾을 수 없습니다: {req.path}")
+        pdfs = [f for f in os.listdir(req.path) if f.lower().endswith(".pdf")]
+        if not pdfs:
+            # also check subdirectories
+            import glob
+            pdfs = glob.glob(os.path.join(req.path, "**", "*.pdf"), recursive=True)
+        if not pdfs:
+            raise HTTPException(status_code=422, detail=f"이 폴더에 PDF가 없습니다: {req.path}")
         background_tasks.add_task(_run_local_ingest, job_id, req.path)
 
     elif req.source == "notion":

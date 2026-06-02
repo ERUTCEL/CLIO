@@ -2,6 +2,7 @@
   "name": "research-companion",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "main": "electron/main.js",
   "scripts": {
     "dev": "concurrently \"vite --port 5173\" \"wait-on http://localhost:5173 && electron .\"",

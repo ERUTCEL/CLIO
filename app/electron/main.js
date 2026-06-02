@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog, safeStorage } from 'electron'
 import { spawn } from 'child_process'
 import path from 'path'
 import { fileURLToPath } from 'url'
@@ -6,29 +6,57 @@ import fs from 'fs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const isDev = process.env.NODE_ENV !== 'production'
+const KEY_FILE = path.join(app.getPath('userData'), 'api_key.enc')
 
 let mainWindow
 let backendProcess
+
+// ── Keychain helpers ─────────────────────────────────────────────────────────
+
+function saveApiKey(key) {
+  if (!safeStorage.isEncryptionAvailable()) {
+    // Fallback: store in userData (still better than .env in repo)
+    fs.writeFileSync(KEY_FILE + '.plain', key, 'utf8')
+    return
+  }
+  const encrypted = safeStorage.encryptString(key)
+  fs.writeFileSync(KEY_FILE, encrypted)
+}
+
+function loadApiKey() {
+  try {
+    if (fs.existsSync(KEY_FILE)) {
+      const buf = fs.readFileSync(KEY_FILE)
+      return safeStorage.isEncryptionAvailable()
+        ? safeStorage.decryptString(buf)
+        : buf.toString('utf8')
+    }
+    if (fs.existsSync(KEY_FILE + '.plain')) {
+      return fs.readFileSync(KEY_FILE + '.plain', 'utf8')
+    }
+  } catch { /* key not found or corrupt */ }
+  return ''
+}
 
 // ── Backend (FastAPI) ────────────────────────────────────────────────────────
 
 function startBackend() {
   const repoRoot = path.resolve(__dirname, '../../')
   const backendDir = path.join(repoRoot, 'research_companion')
-  const venvPython = path.join(backendDir, '.venv', 'bin', 'python3')
   const uvicorn = path.join(backendDir, '.venv', 'bin', 'uvicorn')
 
-  const python = fs.existsSync(venvPython) ? venvPython : 'python3'
-  const cmd = fs.existsSync(uvicorn) ? uvicorn : null
-
-  if (!cmd) {
-    console.warn('uvicorn not found — skipping backend start')
+  if (!fs.existsSync(uvicorn)) {
+    console.warn('[backend] uvicorn not found — skipping auto-start')
     return
   }
 
-  backendProcess = spawn(cmd, ['api.main:app', '--port', '8001', '--host', '127.0.0.1'], {
+  const savedKey = loadApiKey()
+  const env = { ...process.env }
+  if (savedKey) env.ANTHROPIC_API_KEY = savedKey
+
+  backendProcess = spawn(uvicorn, ['api.main:app', '--port', '8001', '--host', '127.0.0.1'], {
     cwd: backendDir,
-    env: { ...process.env },
+    env,
     stdio: ['ignore', 'pipe', 'pipe'],
   })
 
@@ -38,10 +66,7 @@ function startBackend() {
 }
 
 function stopBackend() {
-  if (backendProcess) {
-    backendProcess.kill()
-    backendProcess = null
-  }
+  if (backendProcess) { backendProcess.kill(); backendProcess = null }
 }
 
 // ── Window ───────────────────────────────────────────────────────────────────
@@ -62,7 +87,6 @@ function createWindow() {
 
   if (isDev) {
     mainWindow.loadURL('http://localhost:5173')
-    mainWindow.webContents.openDevTools()
   } else {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'))
   }
@@ -76,14 +100,10 @@ app.whenReady().then(() => {
   })
 })
 
-app.on('window-all-closed', () => {
-  stopBackend()
-  if (process.platform !== 'darwin') app.quit()
-})
-
+app.on('window-all-closed', () => { stopBackend(); if (process.platform !== 'darwin') app.quit() })
 app.on('quit', stopBackend)
 
-// ── IPC handlers ─────────────────────────────────────────────────────────────
+// ── IPC ──────────────────────────────────────────────────────────────────────
 
 ipcMain.handle('select-folder', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
@@ -93,18 +113,19 @@ ipcMain.handle('select-folder', async () => {
   return result.canceled ? null : result.filePaths[0]
 })
 
-ipcMain.handle('get-api-key', () => {
-  return process.env.ANTHROPIC_API_KEY || ''
+ipcMain.handle('has-api-key', () => {
+  return loadApiKey().length > 0
 })
 
 ipcMain.handle('set-api-key', (_, key) => {
-  process.env.ANTHROPIC_API_KEY = key
-  // .env 파일에도 기록
-  const envPath = path.join(__dirname, '../../research_companion/.env')
-  const existing = fs.existsSync(envPath) ? fs.readFileSync(envPath, 'utf8') : ''
-  const updated = existing.replace(/^ANTHROPIC_API_KEY=.*/m, '')
-    .trim()
-    .concat('\nANTHROPIC_API_KEY=' + key + '\n')
-  fs.writeFileSync(envPath, updated)
+  saveApiKey(key.trim())
+  // Also inject into running backend env (if process is alive)
+  if (backendProcess) process.env.ANTHROPIC_API_KEY = key.trim()
+  return true
+})
+
+ipcMain.handle('clear-api-key', () => {
+  if (fs.existsSync(KEY_FILE)) fs.unlinkSync(KEY_FILE)
+  if (fs.existsSync(KEY_FILE + '.plain')) fs.unlinkSync(KEY_FILE + '.plain')
   return true
 })
