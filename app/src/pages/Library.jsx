@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import AddDocPanel from '../components/AddDocPanel'
 
 const SOURCE_LABEL = {
   pdf:            { text: 'PDF',    bg: 'bg-blue-100',   color: 'text-blue-700'   },
@@ -103,7 +104,8 @@ export default function Library({ backend }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
-  const [filter, setFilter] = useState('all')  // 'all' | 'pdf' | 'notion'
+  const [filter, setFilter] = useState('all')
+  const [showAdd, setShowAdd] = useState(false)
 
   const fetchDocs = useCallback(async () => {
     setLoading(true)
@@ -155,13 +157,36 @@ export default function Library({ backend }) {
               논문 {pdfCount}편 · Notion {notionCount}개
             </p>
           </div>
-          <button
-            onClick={fetchDocs}
-            className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50 transition-colors"
-          >
-            새로고침
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowAdd(v => !v)}
+              className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${
+                showAdd
+                  ? 'bg-gray-900 text-white'
+                  : 'bg-gray-900 text-white hover:bg-gray-700'
+              }`}
+            >
+              {showAdd ? '✕ 닫기' : '+ 논문 추가'}
+            </button>
+            <button
+              onClick={fetchDocs}
+              className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50 transition-colors"
+            >
+              새로고침
+            </button>
+          </div>
         </div>
+
+        {/* Add panel */}
+        {showAdd && (
+          <div className="mt-3 p-4 bg-gray-50 rounded-xl border border-gray-200">
+            <AddDocPanel
+              backend={backend}
+              compact
+              onDone={() => { setShowAdd(false); fetchDocs() }}
+            />
+          </div>
+        )}
 
         {/* Search + Filter */}
         <div className="flex gap-2">
