@@ -43,10 +43,15 @@ def format_citations(results: list[dict]) -> list[dict]:
     return citations
 
 
+_NO_SOURCE_THRESHOLD = 0.42  # below this → treat as no match, skip LLM
+
+
 def compute_confidence(results: list[dict]) -> str:
     if not results:
         return "no_source"
     top_score = max(r.get("score", 0) for r in results)
+    if top_score < _NO_SOURCE_THRESHOLD:
+        return "no_source"
     if top_score >= 0.75:
         return "high"
     if top_score >= 0.5:
