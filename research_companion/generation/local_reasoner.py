@@ -53,27 +53,64 @@ class LocalReasoner:
             log.debug("local_reasoner_unavailable", error=str(exc))
             return set()
 
+    def server_running(self) -> bool:
+        if not self.enabled:
+            return False
+        try:
+            res = requests.get(f"{self.base_url}/api/tags", timeout=2)
+            res.raise_for_status()
+            return True
+        except Exception:
+            return False
+
     def is_available(self) -> bool:
         return bool(self.available_models)
 
     def status(self) -> dict[str, Any]:
+        running = self.server_running()
         model = self.best_model()
         return {
             "enabled": self.enabled,
             "base_url": self.base_url,
+            "server_running": running,
             "available": bool(model),
             "model": model or "",
             "installed_models": sorted(self.available_models),
+            "setup_hint": "" if running else "Ollama is not running. Install or start Ollama before pulling models.",
             "recommended": [
-                {"name": self.model, "role": "기본 로컬 조교", "target": "16GB+ RAM 권장"},
-                {"name": self.fallback_model, "role": "가벼운 fallback", "target": "8-16GB RAM"},
-                {"name": self.deep_model, "role": "깊은 추론 옵션", "target": "16GB+ RAM 권장"},
+                {
+                    "name": self.fallback_model,
+                    "role": "가벼운 fallback",
+                    "target": "8-16GB RAM",
+                    "download_size": "약 4-6GB",
+                    "free_space": "10GB 이상",
+                },
+                {
+                    "name": self.model,
+                    "role": "기본 로컬 조교",
+                    "target": "16GB+ RAM 권장",
+                    "download_size": "약 8-10GB",
+                    "free_space": "20GB 이상",
+                },
+                {
+                    "name": self.deep_model,
+                    "role": "깊은 추론 옵션",
+                    "target": "16GB+ RAM 권장",
+                    "download_size": "약 9-12GB",
+                    "free_space": "25GB 이상",
+                },
             ],
         }
 
     def pull_model(self, model: str) -> dict[str, Any]:
         if not self.enabled:
             return {"ok": False, "status": "local reasoner disabled"}
+        if not self.server_running():
+            return {
+                "ok": False,
+                "status": "Ollama is not running. Start Ollama, then try installing the model again.",
+                "model": model,
+            }
         try:
             res = requests.post(
                 f"{self.base_url}/api/pull",
