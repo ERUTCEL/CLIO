@@ -87,9 +87,9 @@ function persistableSessions(sessions) {
 
 function StreamingAnswer({ content }) {
   return (
-    <div className="whitespace-pre-wrap text-[15px] leading-8 text-[#262824]">
+    <div className="whitespace-pre-wrap text-[15px] leading-8 text-[#20242b]">
       {content}
-      <span className="inline-block w-0.5 h-4 bg-[#3f6f5d] animate-pulse ml-0.5 align-middle" />
+      <span className="inline-block w-0.5 h-4 bg-[#0f9f8d] animate-pulse ml-0.5 align-middle" />
     </div>
   )
 }
@@ -105,13 +105,13 @@ function SourcePreview({ sources = [], streaming }) {
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       {streaming && (
-        <span className="text-[11px] font-medium uppercase tracking-wide text-[#738075] mr-1">
+        <span className="text-[11px] font-medium uppercase tracking-wide text-[#697386] mr-1">
           {sources.length ? 'Reading library' : 'Searching library'}
         </span>
       )}
       {sources.slice(0, 4).map(source => (
         <span key={`${source.index}-${source.title}`}
-          className="max-w-[15rem] truncate rounded-md border border-[#d9d2c3] bg-[#fffdf8] px-2 py-1 text-[11px] text-[#5d625b]">
+          className="max-w-[15rem] truncate rounded-md border border-[#dce2e8] bg-white px-2 py-1 text-[11px] text-[#59606b] shadow-sm">
           [{source.index}] {source.title}
         </span>
       ))}
@@ -122,16 +122,16 @@ function SourcePreview({ sources = [], streaming }) {
 function CitationPanel({ confidence, citations = [] }) {
   if (!confidence) return null
   return (
-    <details className="group rounded-md border border-[#d9d2c3] bg-[#fffdf8]">
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2 text-xs text-[#5f665d]">
+    <details className="group rounded-md border border-[#dce2e8] bg-white shadow-sm">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2 text-xs text-[#59606b]">
         <div className="flex items-center gap-2">
           <ConfidenceBadge confidence={confidence} />
           <span>인용 {citations.length}개</span>
         </div>
-        <span className="text-[#8c8171] group-open:rotate-180 transition-transform">⌄</span>
+        <span className="text-[#8a93a3] group-open:rotate-180 transition-transform">⌄</span>
       </summary>
       {citations.length > 0 && (
-        <div className="grid grid-cols-1 gap-1.5 border-t border-[#ebe5d9] p-2">
+        <div className="grid grid-cols-1 gap-1.5 border-t border-[#eef1f4] p-2">
           {citations.map(c => <CitationCard key={c.index} citation={c} />)}
         </div>
       )}
@@ -523,33 +523,33 @@ export default function Chat({ backend }) {
   }
 
   return (
-    <div className="flex h-full flex-col bg-[#f4f1ea]">
-      <div className="border-b border-[#ddd5c7] bg-[#fbfaf7]/95 px-5 py-3">
+    <div className="flex h-full flex-col bg-[#f6f6f2]">
+      <div className="border-b border-[#d8dbe1] bg-white/95 px-5 py-3 shadow-sm">
         <div className="mb-3 flex items-center justify-between gap-4">
           <div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#738075]">Decision desk</div>
-            <h1 className="mt-0.5 text-lg font-semibold text-[#20211f]">Research Companion</h1>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#697386]">Decision desk</div>
+            <h1 className="mt-0.5 text-lg font-semibold text-[#171717]">Research Companion</h1>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-72">
               <LocalAISetup backend={backend} />
             </div>
-            <span className="rounded-md bg-[#dfe9e4] px-2 py-1 text-xs font-medium text-[#243c35]">Library-grounded</span>
-            <span className="rounded-md bg-[#eadfca] px-2 py-1 text-xs font-medium text-[#69512d]">Visual evidence ready</span>
+            <span className="rounded-md border border-[#b8ece4] bg-[#ecfffb] px-2 py-1 text-xs font-medium text-[#086c61]">Library-grounded</span>
+            <span className="rounded-md border border-[#f2d49a] bg-[#fff7e6] px-2 py-1 text-xs font-medium text-[#8a5a00]">Visual evidence ready</span>
           </div>
         </div>
         <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
           <select value={activeSession.id}
             onChange={e => setActiveSessionId(e.target.value)}
-            className="max-w-[18rem] truncate rounded-md border border-[#d9d2c3] bg-[#fffdf8] px-2 py-1.5 text-xs text-[#3b3d39] focus:outline-none focus:ring-2 focus:ring-[#b8c9be]">
+            className="max-w-[18rem] truncate rounded-md border border-[#dce2e8] bg-[#f8fafc] px-2 py-1.5 text-xs text-[#20242b] focus:outline-none focus:ring-2 focus:ring-[#6ee7d8]">
             {sessions.map(session => (
               <option key={session.id} value={session.id}>
                 {session.title || '새 대화'}
               </option>
             ))}
           </select>
-          <div className="hidden text-xs text-[#8c8171] sm:block">
+          <div className="hidden text-xs text-[#7b8190] sm:block">
             질문 {messages.filter(m => m.role === 'user').length}개
           </div>
           {editingTitle ? (
@@ -561,20 +561,20 @@ export default function Chat({ backend }) {
                   if (e.key === 'Escape') cancelTitleEdit()
                 }}
                 autoFocus
-                className="w-48 rounded-md border border-[#cfc6b6] bg-[#fffdf8] px-2 py-1.5 text-xs text-[#20211f] focus:outline-none focus:ring-2 focus:ring-[#b8c9be]"
+                className="w-48 rounded-md border border-[#dce2e8] bg-white px-2 py-1.5 text-xs text-[#171717] focus:outline-none focus:ring-2 focus:ring-[#6ee7d8]"
               />
               <button onClick={saveTitleEdit}
-                className="rounded-md px-2 py-1.5 text-xs text-[#243c35] hover:bg-[#dfe9e4]">
+                className="rounded-md px-2 py-1.5 text-xs text-[#086c61] hover:bg-[#ecfffb]">
                 저장
               </button>
               <button onClick={cancelTitleEdit}
-                className="rounded-md px-2 py-1.5 text-xs text-[#7b776e] hover:bg-[#f0ece3]">
+                className="rounded-md px-2 py-1.5 text-xs text-[#697386] hover:bg-[#eef1f4]">
                 취소
               </button>
             </div>
           ) : (
             <button onClick={startTitleEdit}
-              className="rounded-md px-2 py-1.5 text-xs text-[#7b776e] hover:bg-[#f0ece3] hover:text-[#20211f]">
+              className="rounded-md px-2 py-1.5 text-xs text-[#697386] hover:bg-[#eef1f4] hover:text-[#171717]">
               제목 수정
             </button>
           )}
@@ -582,12 +582,12 @@ export default function Chat({ backend }) {
         <div className="flex shrink-0 items-center gap-1.5">
           <button onClick={createConversation}
             disabled={loading}
-            className="rounded-md bg-[#243c35] px-2.5 py-1.5 text-xs font-medium text-white hover:bg-[#305448] disabled:opacity-40">
+            className="rounded-md bg-[#151a23] px-2.5 py-1.5 text-xs font-medium text-white hover:bg-[#283241] disabled:opacity-40">
             새 대화
           </button>
           <button onClick={clearConversation}
             disabled={loading || messages.length === 0}
-            className="rounded-md px-2 py-1.5 text-xs text-[#7b776e] hover:bg-[#f0ece3] hover:text-[#20211f] disabled:opacity-40">
+            className="rounded-md px-2 py-1.5 text-xs text-[#697386] hover:bg-[#eef1f4] hover:text-[#171717] disabled:opacity-40">
             비우기
           </button>
         </div>
@@ -597,19 +597,19 @@ export default function Chat({ backend }) {
         <div className="mx-auto max-w-5xl space-y-6">
         {messages.length === 0 && (
           <div className="grid min-h-[70vh] place-items-center">
-          <div className="w-full max-w-3xl border border-[#ddd5c7] bg-[#fbfaf7] p-8 shadow-sm">
+          <div className="w-full max-w-3xl border border-[#d8dbe1] bg-white p-8 shadow-sm">
             <div className="max-w-xl space-y-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-md bg-[#243c35] text-sm font-semibold text-white">
+              <div className="flex h-12 w-12 items-center justify-center rounded-md bg-[#151a23] text-sm font-semibold text-white">
                 RC
               </div>
-              <h2 className="text-2xl font-semibold text-[#20211f]">Ask for a research judgment.</h2>
-              <p className="text-sm leading-7 text-[#687064]">
+              <h2 className="text-2xl font-semibold text-[#171717]">Ask for a research judgment.</h2>
+              <p className="text-sm leading-7 text-[#59606b]">
                 Turn your library into a judgment: contribution, risk, and the next test.
               </p>
             </div>
             <div className="mt-5 flex flex-wrap gap-1.5">
               {LENSES.map(lens => (
-                <span key={lens} className="rounded-md border border-[#d9d2c3] bg-[#fffdf8] px-2 py-1 text-xs text-[#5d625b]">
+                <span key={lens} className="rounded-md border border-[#dce2e8] bg-[#f8fafc] px-2 py-1 text-xs text-[#59606b]">
                   {lens}
                 </span>
               ))}
@@ -617,7 +617,7 @@ export default function Chat({ backend }) {
             <div className="mt-6 grid gap-2">
               {EXAMPLES.map(ex => (
                 <button key={ex} onClick={() => sendMessage(ex)}
-                  className="border border-[#d9d2c3] bg-[#fffdf8] px-4 py-3 text-left text-sm text-[#3b3d39] transition-colors hover:border-[#9db4a8] hover:bg-[#f7fbf8]">
+                  className="border border-[#dce2e8] bg-[#f8fafc] px-4 py-3 text-left text-sm text-[#20242b] transition-colors hover:border-[#2dd4bf] hover:bg-[#ecfffb]">
                   {ex}
                 </button>
               ))}
@@ -629,8 +629,8 @@ export default function Chat({ backend }) {
         {messages.map((msg, i) => (
           <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             {msg.role === 'user' && (
-              <div className="max-w-2xl border border-[#cfc6b6] bg-[#fffdf8] px-4 py-3 text-sm leading-7 text-[#20211f] shadow-sm">
-                <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-[#8c8171]">Question</div>
+              <div className="max-w-2xl border border-[#dce2e8] bg-white px-4 py-3 text-sm leading-7 text-[#171717] shadow-sm">
+                <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-[#7b8190]">Question</div>
                 <div>{msg.content}</div>
               </div>
             )}
@@ -638,22 +638,22 @@ export default function Chat({ backend }) {
             {msg.role === 'assistant' && (
               <div className="w-full max-w-4xl space-y-3">
                 <SourcePreview sources={msg.sources} streaming={msg.streaming} />
-                <div className="border-l-4 border-[#3f6f5d] bg-[#fbfaf7] px-5 py-4 min-h-[2.5rem] shadow-sm ring-1 ring-[#ddd5c7]">
-                  <div className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#738075]">
-                    <span className="h-1.5 w-1.5 rounded-full bg-[#3f6f5d]" />
+                <div className="border-l-4 border-[#0f9f8d] bg-white px-5 py-4 min-h-[2.5rem] shadow-sm ring-1 ring-[#d8dbe1]">
+                  <div className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#697386]">
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#0f9f8d]" />
                     Decision memo
                   </div>
                   {msg.content ? (
                     msg.streaming ? (
                       <StreamingAnswer content={msg.content} />
                     ) : (
-                      <div className="prose prose-sm max-w-none text-[#262824] prose-headings:mt-4 prose-headings:mb-2 prose-headings:text-[#20211f] prose-strong:text-[#20211f]">
+                      <div className="prose prose-sm max-w-none text-[#20242b] prose-headings:mt-4 prose-headings:mb-2 prose-headings:text-[#171717] prose-strong:text-[#171717]">
                         <ReactMarkdown components={markdownComponents}>{msg.content}</ReactMarkdown>
                       </div>
                     )
                   ) : (
-                    <div className="flex items-center gap-2 h-5 text-xs text-[#687064]">
-                      <span className="w-1.5 h-1.5 bg-[#3f6f5d] rounded-full animate-pulse" />
+                    <div className="flex items-center gap-2 h-5 text-xs text-[#59606b]">
+                      <span className="w-1.5 h-1.5 bg-[#0f9f8d] rounded-full animate-pulse" />
                       {msg.sources?.length ? 'Synthesizing decision memo...' : 'Finding relevant evidence...'}
                     </div>
                   )}
@@ -679,20 +679,20 @@ export default function Chat({ backend }) {
         </div>
       </div>
 
-      <div className="border-t border-[#ddd5c7] bg-[#fbfaf7] px-6 py-4">
+      <div className="border-t border-[#d8dbe1] bg-white px-6 py-4 shadow-[0_-1px_8px_rgba(15,23,42,0.04)]">
         <div className="mx-auto flex max-w-5xl items-end gap-2">
           <div className="relative flex-1">
             {slashMatches.length > 0 && (
-              <div className="absolute bottom-full left-0 right-0 mb-2 overflow-hidden rounded-md border border-[#d9d2c3] bg-[#fffdf8] shadow-lg">
+              <div className="absolute bottom-full left-0 right-0 mb-2 overflow-hidden rounded-md border border-[#dce2e8] bg-white shadow-lg">
                 {slashMatches.map(command => (
                   <button key={command.name}
                     onMouseDown={e => {
                       e.preventDefault()
                       runSlashCommand(command.label)
                     }}
-                    className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-xs hover:bg-[#f0ece3]">
-                    <span className="font-mono font-medium text-[#20211f]">{command.label}</span>
-                    <span className="truncate text-[#7b776e]">{command.description}</span>
+                    className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-xs hover:bg-[#eef1f4]">
+                    <span className="font-mono font-medium text-[#171717]">{command.label}</span>
+                    <span className="truncate text-[#697386]">{command.description}</span>
                   </button>
                 ))}
               </div>
@@ -704,14 +704,14 @@ export default function Chat({ backend }) {
               onCompositionEnd={() => { composingRef.current = false }}
               placeholder="Ask about a contribution gap, project risk, or type / for commands..."
               rows={1}
-              className="w-full resize-none border border-[#cfc6b6] bg-[#fffdf8] px-4 py-3 text-sm text-[#20211f] focus:outline-none focus:ring-2 focus:ring-[#9db4a8] max-h-32 overflow-y-auto"
+              className="w-full resize-none rounded-md border border-[#cfd6df] bg-[#f8fafc] px-4 py-3 text-sm text-[#171717] focus:outline-none focus:ring-2 focus:ring-[#2dd4bf] max-h-32 overflow-y-auto"
               onInput={e => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 128) + 'px' }}
             />
           </div>
           <button onClick={() => loading ? stopGeneration() : sendMessage(input)}
             disabled={!loading && !input.trim()}
             aria-label="Send message"
-            className="p-3 bg-[#243c35] text-white hover:bg-[#305448] disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0">
+            className="rounded-md bg-[#151a23] p-3 text-white transition-colors hover:bg-[#283241] disabled:cursor-not-allowed disabled:opacity-40 shrink-0">
             {loading ? (
               <span className="block h-4 w-4 rounded-sm bg-current" />
             ) : (

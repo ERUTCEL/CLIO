@@ -2,16 +2,16 @@ import { useState, useEffect, useCallback } from 'react'
 import AddDocPanel from '../components/AddDocPanel'
 
 const SOURCE_LABEL = {
-  pdf:            { text: 'PDF',    bg: 'bg-blue-100',   color: 'text-blue-700'   },
-  notion_summary: { text: 'Notion', bg: 'bg-purple-100', color: 'text-purple-700' },
-  notion_memo:    { text: 'Notion', bg: 'bg-purple-100', color: 'text-purple-700' },
-  notion_meta:    { text: 'Notion', bg: 'bg-purple-100', color: 'text-purple-700' },
+  pdf:            { text: 'PDF',    bg: 'bg-[#ecfffb]', color: 'text-[#086c61]', border: 'border-[#b8ece4]' },
+  notion_summary: { text: 'Notion', bg: 'bg-[#fff7e6]', color: 'text-[#8a5a00]', border: 'border-[#f2d49a]' },
+  notion_memo:    { text: 'Notion', bg: 'bg-[#fff7e6]', color: 'text-[#8a5a00]', border: 'border-[#f2d49a]' },
+  notion_meta:    { text: 'Notion', bg: 'bg-[#fff7e6]', color: 'text-[#8a5a00]', border: 'border-[#f2d49a]' },
 }
 
 const QUALITY_COLOR = {
-  high:   'text-green-500',
-  medium: 'text-yellow-500',
-  low:    'text-red-400',
+  high:   'text-[#0f9f8d]',
+  medium: 'text-[#d48a00]',
+  low:    'text-[#d95f59]',
 }
 
 function Stars({ weight, sourceType }) {
@@ -35,12 +35,12 @@ function DocCard({ doc, onDelete }) {
   const filename = doc.source.split('/').pop()
 
   return (
-    <div className="bg-white border border-gray-200 rounded-xl p-4 hover:border-gray-300 transition-colors">
+    <div className="bg-white border border-[#dce2e8] rounded-md p-4 shadow-sm transition-colors hover:border-[#aeb8c6]">
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           {/* Top row */}
           <div className="flex items-center gap-2 flex-wrap mb-1">
-            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${src.bg} ${src.color}`}>
+            <span className={`rounded-md border px-2 py-0.5 text-xs font-medium ${src.bg} ${src.color} ${src.border || 'border-[#dce2e8]'}`}>
               {src.text}
             </span>
             <Stars weight={doc.importance_weight} sourceType={doc.source_type} />
@@ -51,12 +51,12 @@ function DocCard({ doc, onDelete }) {
           </div>
 
           {/* Title */}
-          <p className="font-semibold text-gray-900 text-sm leading-tight truncate">
+          <p className="font-semibold text-[#171717] text-sm leading-tight truncate">
             {doc.title || filename}
           </p>
 
           {/* Meta */}
-          <div className="flex items-center gap-2 mt-1 text-xs text-gray-400 flex-wrap">
+          <div className="flex items-center gap-2 mt-1 text-xs text-[#7b8190] flex-wrap">
             {doc.author && <span>{doc.author}</span>}
             {doc.year > 0 && <span>{doc.year}</span>}
             {doc.journal && <span className="truncate max-w-[150px]">{doc.journal}</span>}
@@ -65,7 +65,7 @@ function DocCard({ doc, onDelete }) {
           </div>
 
           {/* Source path */}
-          <p className="text-xs text-gray-300 mt-1 truncate" title={doc.source}>{doc.source}</p>
+          <p className="text-xs text-[#a2aaba] mt-1 truncate" title={doc.source}>{doc.source}</p>
         </div>
 
         {/* Delete */}
@@ -73,7 +73,7 @@ function DocCard({ doc, onDelete }) {
           {!confirming ? (
             <button
               onClick={() => setConfirming(true)}
-              className="text-gray-300 hover:text-red-400 transition-colors p-1 rounded"
+              className="text-[#a2aaba] hover:text-[#d95f59] transition-colors p-1 rounded"
               title="삭제"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -85,11 +85,11 @@ function DocCard({ doc, onDelete }) {
             <div className="flex gap-1">
               <button
                 onClick={() => onDelete(doc.doc_id)}
-                className="text-xs px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600"
+                className="text-xs px-2 py-1 bg-[#d95f59] text-white rounded hover:bg-[#c94d47]"
               >삭제</button>
               <button
                 onClick={() => setConfirming(false)}
-                className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded hover:bg-gray-200"
+                className="text-xs px-2 py-1 bg-[#eef1f4] text-[#59606b] rounded hover:bg-[#dce2e8]"
               >취소</button>
             </div>
           )}
@@ -147,30 +147,31 @@ export default function Library({ backend }) {
   const notionCount = docs.filter(d => d.source_type.startsWith('notion')).length
 
   return (
-    <div className="flex flex-col h-full bg-gray-50">
+    <div className="flex flex-col h-full bg-[#f6f6f2]">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
+      <div className="bg-white border-b border-[#d8dbe1] px-6 py-4 shadow-sm">
         <div className="flex items-center justify-between mb-3">
           <div>
-            <h1 className="text-lg font-bold text-gray-900">라이브러리</h1>
-            <p className="text-xs text-gray-400 mt-0.5">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#697386]">Library</div>
+            <h1 className="mt-0.5 text-lg font-bold text-[#171717]">연구 자료실</h1>
+            <p className="text-xs text-[#7b8190] mt-0.5">
               논문 {pdfCount}편 · Notion {notionCount}개
             </p>
           </div>
           <div className="flex gap-2">
             <button
               onClick={() => setShowAdd(v => !v)}
-              className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${
+              className={`text-xs px-3 py-1.5 rounded-md font-medium transition-colors ${
                 showAdd
-                  ? 'bg-gray-900 text-white'
-                  : 'bg-gray-900 text-white hover:bg-gray-700'
+                  ? 'bg-[#151a23] text-white'
+                  : 'bg-[#151a23] text-white hover:bg-[#283241]'
               }`}
             >
-              {showAdd ? '✕ 닫기' : '+ 논문 추가'}
+              {showAdd ? '닫기' : '논문 추가'}
             </button>
             <button
               onClick={fetchDocs}
-              className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50 transition-colors"
+              className="text-xs px-3 py-1.5 border border-[#dce2e8] rounded-md text-[#59606b] hover:bg-[#eef1f4] transition-colors"
             >
               새로고침
             </button>
@@ -179,7 +180,7 @@ export default function Library({ backend }) {
 
         {/* Add panel */}
         {showAdd && (
-          <div className="mt-3 p-4 bg-gray-50 rounded-xl border border-gray-200">
+          <div className="mt-3 p-4 bg-[#f8fafc] rounded-md border border-[#dce2e8]">
             <AddDocPanel
               backend={backend}
               compact
@@ -191,7 +192,7 @@ export default function Library({ backend }) {
         {/* Search + Filter */}
         <div className="flex gap-2">
           <div className="relative flex-1">
-            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400"
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#8a93a3]"
               fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                 d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0"/>
@@ -200,17 +201,17 @@ export default function Library({ backend }) {
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="제목, 저자 검색..."
-              className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-300"
+              className="w-full rounded-md border border-[#dce2e8] bg-[#f8fafc] py-1.5 pl-8 pr-3 text-sm text-[#171717] focus:outline-none focus:ring-2 focus:ring-[#2dd4bf]"
             />
           </div>
           {['all', 'pdf', 'notion'].map(f => (
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${
+              className={`px-3 py-1.5 text-xs rounded-md border transition-colors ${
                 filter === f
-                  ? 'bg-gray-900 text-white border-gray-900'
-                  : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+                  ? 'bg-[#151a23] text-white border-[#151a23]'
+                  : 'border-[#dce2e8] text-[#59606b] hover:bg-[#eef1f4]'
               }`}
             >
               {f === 'all' ? '전체' : f === 'pdf' ? 'PDF' : 'Notion'}
@@ -222,25 +223,25 @@ export default function Library({ backend }) {
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-6 py-4">
         {loading && (
-          <div className="flex items-center justify-center h-32 text-gray-400 text-sm">
+          <div className="flex items-center justify-center h-32 text-[#7b8190] text-sm">
             불러오는 중...
           </div>
         )}
 
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-600 mb-4">
+          <div className="bg-[#fff1f0] border border-[#f2b8b5] rounded-md px-4 py-3 text-sm text-[#b9413c] mb-4">
             {error}
           </div>
         )}
 
         {!loading && !error && filtered.length === 0 && (
           <div className="flex flex-col items-center justify-center h-48 text-center">
-            <div className="text-4xl mb-3">📭</div>
-            <p className="text-gray-500 text-sm">
+            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-md border border-[#dce2e8] bg-white text-xs font-semibold text-[#697386]">LIB</div>
+            <p className="text-[#59606b] text-sm">
               {docs.length === 0 ? '인덱싱된 문서가 없습니다.' : '검색 결과가 없습니다.'}
             </p>
             {docs.length === 0 && (
-              <p className="text-gray-400 text-xs mt-1">온보딩에서 폴더를 추가하거나 Notion을 연결해보세요.</p>
+              <p className="text-[#7b8190] text-xs mt-1">온보딩에서 폴더를 추가하거나 Notion을 연결해보세요.</p>
             )}
           </div>
         )}

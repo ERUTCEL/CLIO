@@ -5,10 +5,10 @@ export default function CitationCard({ citation }) {
   const isVisual = content_type === 'figure' || content_type === 'diagram'
   const label = is_user_memo ? '내 메모' : isVisual ? '그림 근거' : '논문'
   const labelColor = is_user_memo
-    ? 'bg-purple-100 text-purple-700'
+    ? 'border-[#f2d49a] bg-[#fff7e6] text-[#8a5a00]'
     : isVisual
-    ? 'bg-emerald-100 text-emerald-700'
-    : 'bg-blue-100 text-blue-700'
+    ? 'border-[#b8ece4] bg-[#ecfffb] text-[#086c61]'
+    : 'border-[#c9d3dd] bg-[#f6f9fb] text-[#34566f]'
 
   let meta = ''
   if (!is_user_memo) {
@@ -18,21 +18,21 @@ export default function CitationCard({ citation }) {
   }
 
   return (
-    <div className="flex items-start gap-2.5 p-3 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors">
-      <span className="text-xs font-bold text-gray-400 mt-0.5 w-4 shrink-0">[{index}]</span>
+    <div className="flex items-start gap-2.5 rounded-md border border-[#dce2e8] bg-[#f8fafc] p-3 transition-colors hover:bg-white">
+      <span className="text-xs font-bold text-[#8a93a3] mt-0.5 w-4 shrink-0">[{index}]</span>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5 flex-wrap">
-          <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${labelColor}`}>{label}</span>
+          <span className={`rounded border px-1.5 py-0.5 text-xs font-medium ${labelColor}`}>{label}</span>
           {figure_type && (
-            <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">{figure_type}</span>
+            <span className="rounded border border-[#dce2e8] bg-white px-1.5 py-0.5 text-xs text-[#59606b]">{figure_type}</span>
           )}
           {parse_quality_warning && (
-            <span title="파싱 품질이 낮습니다 — 직접 확인 권장" className="text-xs">⚠️</span>
+            <span title="파싱 품질이 낮습니다 — 직접 확인 권장" className="rounded bg-[#fff7e6] px-1.5 py-0.5 text-xs text-[#8a5a00]">확인 필요</span>
           )}
         </div>
-        <p className="text-sm font-medium text-gray-900 mt-0.5 truncate">{title || '(제목 없음)'}</p>
-        {caption && <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{caption}</p>}
-        {meta && <p className="text-xs text-gray-500 mt-0.5">{meta}</p>}
+        <p className="text-sm font-medium text-[#171717] mt-0.5 truncate">{title || '(제목 없음)'}</p>
+        {caption && <p className="text-xs text-[#59606b] mt-0.5 line-clamp-2">{caption}</p>}
+        {meta && <p className="text-xs text-[#697386] mt-0.5">{meta}</p>}
       </div>
     </div>
   )
