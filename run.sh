@@ -7,7 +7,7 @@ APP_DIR="$ROOT_DIR/app"
 ENV_FILE="$BACKEND_DIR/.env"
 STAMP_FILE="$BACKEND_DIR/.venv/.deps-installed"
 
-echo "== Research Companion =="
+echo "== CLIO =="
 
 if [ ! -f "$ENV_FILE" ]; then
   cat > "$ENV_FILE" <<'EOF'
@@ -45,6 +45,6 @@ if [ ! -d "$APP_DIR/node_modules" ]; then
   (cd "$APP_DIR" && npm install)
 fi
 
-echo "Starting Research Companion..."
+echo "Starting CLIO..."
 cd "$APP_DIR"
 npm run dev

@@ -1,7 +1,7 @@
 export default function BrandMark({ size = 'md' }) {
   const box = size === 'lg' ? 'h-12 w-12' : 'h-10 w-10'
   return (
-    <div className={`${box} rounded-md bg-[#4F46E5] p-2 shadow-sm`} aria-label="Research Companion">
+    <div className={`${box} rounded-md bg-[#4F46E5] p-2 shadow-sm`} aria-label="CLIO">
       <svg viewBox="0 0 32 32" className="h-full w-full" role="img">
         <path d="M9 5h10l4 4v18H9z" fill="white" opacity="0.96" />
         <path d="M19 5v5h5" fill="none" stroke="#C7D2FE" strokeWidth="1.5" />

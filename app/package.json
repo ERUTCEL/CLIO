@@ -33,8 +33,8 @@
     "wait-on": "^9.0.10"
   },
   "build": {
-    "appId": "com.research-companion.app",
-    "productName": "Research Companion",
+    "appId": "com.clio.app",
+    "productName": "CLIO",
     "directories": {
       "output": "dist-electron"
     },
@@ -43,10 +43,15 @@
       "electron/**/*"
     ],
     "mac": {
-      "target": "dmg"
+      "target": "dmg",
+      "icon": "public/icon.png"
     },
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "icon": "public/icon.ico"
+    },
+    "linux": {
+      "icon": "public/icon.png"
     }
   }
 }

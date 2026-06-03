@@ -8,7 +8,7 @@ export default function Onboarding({ backend, onComplete }) {
 
         <div className="bg-[#151a23] p-8 text-white">
           <BrandMark size="lg" />
-          <h1 className="mt-8 text-3xl font-bold">Research Companion</h1>
+          <h1 className="mt-8 text-3xl font-bold">CLIO</h1>
           <p className="mt-3 text-sm leading-7 text-[#c7d0dc]">
             Add papers and notes, then turn them into contribution gaps, project risks, and next-step decisions.
           </p>

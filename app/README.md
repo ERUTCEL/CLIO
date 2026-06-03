@@ -1,6 +1,6 @@
-# Research Companion App
+# CLIO App
 
-Research Companion is a local-first research decision app for students and
+CLIO is a local-first research decision app for students and
 researchers. It is not meant to be only a paper search box. The app uses a
 personal library of papers and notes to help users decide what to pursue,
 refine, park, or kill.

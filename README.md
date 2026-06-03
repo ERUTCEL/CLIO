@@ -1,4 +1,4 @@
-# Research Companion
+# CLIO
 
 Local-first research decision companion for papers, notes, and project ideas.
 

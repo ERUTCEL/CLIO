@@ -31,7 +31,7 @@ from generation.local_reasoner import LocalReasoner
 log = structlog.get_logger()
 
 app = FastAPI(
-    title="Research Companion API",
+    title="CLIO API",
     description="Local-first AI assistant for academic paper libraries",
     version="0.1.0",
 )

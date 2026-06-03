@@ -35,7 +35,7 @@ export default function App() {
     return (
       <div className="min-h-screen bg-[#f7f7f4] flex flex-col items-center justify-center gap-4 text-[#171717]">
         <BrandMark size="lg" />
-        <p className="font-semibold text-lg">Research Companion</p>
+        <p className="font-semibold text-lg">CLIO</p>
         <div className="flex items-center gap-2 text-[#59606b] text-sm">
           <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>

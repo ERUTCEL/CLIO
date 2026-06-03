@@ -7,7 +7,7 @@ $EnvFile = Join-Path $BackendDir ".env"
 $VenvDir = Join-Path $BackendDir ".venv"
 $StampFile = Join-Path $VenvDir ".deps-installed"
 
-Write-Host "== Research Companion =="
+Write-Host "== CLIO =="
 
 if (-not (Test-Path $EnvFile)) {
   @"
@@ -53,7 +53,7 @@ if (-not (Test-Path $NodeModules)) {
   Pop-Location
 }
 
-Write-Host "Starting Research Companion..."
+Write-Host "Starting CLIO..."
 Push-Location $AppDir
 npm run dev
 Pop-Location

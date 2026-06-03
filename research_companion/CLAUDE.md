@@ -1,4 +1,4 @@
-# Research Companion — CLAUDE.md
+# CLIO — CLAUDE.md
 
 ## Project Overview
 

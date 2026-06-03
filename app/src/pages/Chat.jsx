@@ -470,7 +470,7 @@ export default function Chat({ backend }) {
 
   async function exportConversation() {
     const body = messages.map(msg => {
-      const prefix = msg.role === 'user' ? '## User' : msg.role === 'assistant' ? '## Research Companion' : '## Error'
+      const prefix = msg.role === 'user' ? '## User' : msg.role === 'assistant' ? '## CLIO' : '## Error'
       return `${prefix}\n\n${msg.content || ''}`
     }).join('\n\n---\n\n')
     const blob = new Blob([body], { type: 'text/markdown;charset=utf-8' })
@@ -724,7 +724,7 @@ export default function Chat({ backend }) {
         <div className="mb-3 flex items-center justify-between gap-4">
           <div>
             <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#64748B]">Academic RAG desk</div>
-            <h1 className="mt-0.5 text-lg font-semibold text-[#1E293B]">Research Companion</h1>
+            <h1 className="mt-0.5 text-lg font-semibold text-[#1E293B]">CLIO</h1>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-72">
