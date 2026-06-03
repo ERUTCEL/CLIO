@@ -72,20 +72,22 @@ export default function LocalAISetup({ backend }) {
           if (s.status === 'done' || s.status === 'failed' || s.status === 'missing') {
             clearInterval(id)
             setPulling('')
-            setMessage(s.status === 'done' ? `${model} 설치 완료` : `설치 실패: ${s.error || 'unknown error'}`)
+            setMessage(s.status === 'done'
+              ? `${model} 설치 완료`
+              : `설치가 끊겼습니다. 받은 파일은 보존되므로 같은 설치 버튼을 다시 누르면 이어받기를 시도합니다. (${s.error || 'unknown error'})`)
             refresh()
           }
         } catch (err) {
           clearInterval(id)
           setPulling('')
           setPullJob({ status: 'failed', model, error: err.message })
-          setMessage(`설치 상태를 확인하지 못했습니다: ${err.message}`)
+          setMessage(`설치 상태 확인이 끊겼습니다. 같은 설치 버튼을 다시 누르면 이어받기를 시도합니다. (${err.message})`)
         }
       }, 2000)
     } catch (err) {
       setPulling('')
       setPullJob({ status: 'failed', model, error: err.message })
-      setMessage(`설치를 시작하지 못했습니다: ${err.message}`)
+      setMessage(`설치를 시작하지 못했습니다. Ollama가 켜져 있다면 같은 버튼을 다시 눌러 이어받기를 시도하세요. (${err.message})`)
     }
   }
 
@@ -178,7 +180,8 @@ export default function LocalAISetup({ backend }) {
           <div className="mt-4 space-y-2">
             {(status?.recommended || []).map((item, index) => {
               const installed = status?.installed_models?.includes(item.name)
-              const buttonLabel = installed ? '설치됨' : pulling === item.name ? '설치 중' : serverReady ? '설치' : '대기'
+              const interrupted = pullJob?.status === 'failed' && pullJob?.model === item.name
+              const buttonLabel = installed ? '설치됨' : pulling === item.name ? '설치 중' : interrupted ? '다시 시도' : serverReady ? '설치' : '대기'
               return (
                 <div key={item.name} className="rounded-md border border-[#E2E8F0] bg-white p-3 shadow-sm">
                   <div className="flex min-w-0 items-start justify-between gap-2">
@@ -217,6 +220,11 @@ export default function LocalAISetup({ backend }) {
                         <div className="h-full rounded-full bg-[#4F46E5] transition-all"
                           style={{ width: pullJob.percent != null ? `${Math.max(3, pullJob.percent)}%` : '12%' }} />
                       </div>
+                    </div>
+                  )}
+                  {interrupted && (
+                    <div className="mt-3 rounded-md border border-[#FDE68A] bg-[#FEFCE8] px-2 py-1.5 text-[11px] leading-5 text-[#854D0E]">
+                      다운로드가 끊겼습니다. 다시 시도하면 이미 받은 부분을 재사용합니다.
                     </div>
                   )}
                   <button onClick={() => pull(item.name)}

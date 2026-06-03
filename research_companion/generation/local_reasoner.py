@@ -1,5 +1,6 @@
 import json
 import os
+import time
 from functools import cached_property
 from typing import Any
 
@@ -111,6 +112,28 @@ class LocalReasoner:
                 "status": "Ollama is not running. Start Ollama, then try installing the model again.",
                 "model": model,
             }
+        retries = int(os.getenv("LOCAL_REASONER_PULL_RETRIES", "2"))
+        last_error = ""
+        for attempt in range(retries + 1):
+            if attempt and on_progress:
+                on_progress({
+                    "status": f"연결이 끊겨 재시도 중 ({attempt}/{retries})",
+                    "attempt": attempt + 1,
+                    "retries": retries,
+                })
+            if attempt:
+                time.sleep(3)
+            try:
+                return self._pull_model_once(model, on_progress=on_progress)
+            except Exception as exc:
+                last_error = str(exc)
+                log.warning("local_reasoner_pull_attempt_failed", model=model, attempt=attempt + 1, error=last_error)
+                if not self.server_running():
+                    break
+
+        return {"ok": False, "status": last_error or "model download interrupted", "model": model, "resumable": True}
+
+    def _pull_model_once(self, model: str, on_progress=None) -> dict[str, Any]:
         try:
             res = requests.post(
                 f"{self.base_url}/api/pull",
@@ -133,8 +156,7 @@ class LocalReasoner:
             status = latest.get("status", "success")
             return {"ok": "error" not in latest, "status": status, "model": model, "latest": latest}
         except Exception as exc:
-            log.warning("local_reasoner_pull_failed", model=model, error=str(exc))
-            return {"ok": False, "status": str(exc), "model": model}
+            raise exc
 
     def best_model(self, mode: str = "default") -> str | None:
         preferred = self.deep_model if mode == "deep" else self.model
