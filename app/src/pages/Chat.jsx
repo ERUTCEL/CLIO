@@ -94,10 +94,60 @@ function StreamingAnswer({ content }) {
   )
 }
 
-const markdownComponents = {
-  p: ({ children }) => <p className="mb-4 last:mb-0 leading-8">{children}</p>,
-  li: ({ children }) => <li className="mb-2 leading-8">{children}</li>,
-  hr: () => <hr className="my-8 border-gray-200" />,
+function CodeBlock({ inline, children, ...props }) {
+  const code = String(children ?? '').replace(/\n$/, '')
+  if (inline) {
+    return <code className="rounded bg-[#EEF2F6] px-1 py-0.5 text-[0.9em] text-[#4F46E5]" {...props}>{children}</code>
+  }
+  return (
+    <div className="group relative my-4 overflow-hidden rounded-md border border-[#E2E8F0] bg-[#0F172A]">
+      <button type="button" onClick={() => navigator.clipboard?.writeText(code)}
+        className="absolute right-2 top-2 rounded bg-white/10 px-2 py-1 text-[11px] text-white opacity-0 transition-opacity hover:bg-white/20 group-hover:opacity-100">
+        Copy Code
+      </button>
+      <pre className="overflow-x-auto p-4 text-xs leading-6 text-[#E2E8F0]">
+        <code {...props}>{children}</code>
+      </pre>
+    </div>
+  )
+}
+
+function CitationText({ children, citations = [], onCitationClick }) {
+  if (typeof children !== 'string') return children
+  const parts = children.split(/(\[\d+\])/g)
+  return parts.map((part, idx) => {
+    const match = part.match(/^\[(\d+)\]$/)
+    if (!match) return part
+    const index = Number(match[1])
+    const citation = citations.find(c => Number(c.index) === index)
+    return (
+      <button key={`${part}-${idx}`} type="button"
+        onClick={() => citation && onCitationClick?.(citation)}
+        className="mx-0.5 inline-flex cursor-pointer items-center rounded border border-[#C7D2FE] bg-[#EEF2FF] px-1.5 py-0.5 align-baseline text-[11px] font-semibold leading-none text-[#4F46E5] hover:bg-[#E0E7FF]">
+        [{index}]
+      </button>
+    )
+  })
+}
+
+function createMarkdownComponents(citations, onCitationClick) {
+  const renderChildren = children => (
+    Array.isArray(children)
+      ? children.map((child, idx) => <CitationText key={idx} citations={citations} onCitationClick={onCitationClick}>{child}</CitationText>)
+      : <CitationText citations={citations} onCitationClick={onCitationClick}>{children}</CitationText>
+  )
+  return {
+    p: ({ children }) => <p className="mb-5 last:mb-0 leading-[1.8]">{renderChildren(children)}</p>,
+    li: ({ children }) => <li className="mb-2 leading-[1.8]">{renderChildren(children)}</li>,
+    hr: () => <hr className="my-8 border-[#E2E8F0]" />,
+    code: CodeBlock,
+    pre: ({ children }) => <>{children}</>,
+    blockquote: ({ children }) => (
+      <blockquote className="my-4 border-l-4 border-[#CBD5E1] bg-[#F8FAFC] px-4 py-2 text-[#475569]">
+        {children}
+      </blockquote>
+    ),
+  }
 }
 
 function SourcePreview({ sources = [], streaming }) {
@@ -119,7 +169,7 @@ function SourcePreview({ sources = [], streaming }) {
   )
 }
 
-function CitationPanel({ confidence, citations = [] }) {
+function CitationPanel({ confidence, citations = [], activeIndex, onCitationClick }) {
   if (!confidence) return null
   return (
     <details className="group rounded-md border border-[#dce2e8] bg-white shadow-sm">
@@ -132,10 +182,114 @@ function CitationPanel({ confidence, citations = [] }) {
       </summary>
       {citations.length > 0 && (
         <div className="grid grid-cols-1 gap-1.5 border-t border-[#eef1f4] p-2">
-          {citations.map(c => <CitationCard key={c.index} citation={c} />)}
+          {citations.map(c => (
+            <CitationCard key={c.index}
+              citation={c}
+              active={Number(c.index) === Number(activeIndex)}
+              onSelect={onCitationClick}
+            />
+          ))}
         </div>
       )}
     </details>
+  )
+}
+
+function SourceSidebar({ sources = [], sessions = [], activeSessionId, onSelectSession, onNewSession }) {
+  return (
+    <aside className="hidden w-72 shrink-0 border-r border-[#E2E8F0] bg-white lg:flex lg:flex-col">
+      <div className="border-b border-[#E2E8F0] px-4 py-3">
+        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#64748B]">Documents</div>
+        <div className="mt-1 text-sm font-semibold text-[#1E293B]">Source manager</div>
+      </div>
+      <div className="border-b border-[#E2E8F0] p-3">
+        <button type="button" onClick={onNewSession}
+          className="w-full rounded-md bg-[#4F46E5] px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-[#4338CA]">
+          새 대화
+        </button>
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto p-2">
+        <div className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#94A3B8]">Current evidence</div>
+        {(sources.length ? sources : [{ index: '-', title: '아직 선택된 근거가 없습니다.' }]).slice(0, 8).map(source => (
+          <div key={`${source.index}-${source.title}`}
+            className="flex items-start gap-2 rounded-md px-2 py-2 text-xs text-[#475569] transition-colors hover:bg-[#F1F5F9]">
+            <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border border-[#E2E8F0] bg-[#F8FAFC] text-[10px] font-semibold text-[#4F46E5]">PDF</span>
+            <span className="min-w-0 flex-1 truncate">{source.title}</span>
+          </div>
+        ))}
+        <div className="mt-4 px-2 pb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#94A3B8]">Conversations</div>
+        {sessions.slice(0, 8).map(session => (
+          <button key={session.id} type="button" onClick={() => onSelectSession(session.id)}
+            className={`flex w-full items-center rounded-md px-2 py-2 text-left text-xs transition-colors ${
+              session.id === activeSessionId ? 'bg-[#EEF2FF] text-[#4F46E5]' : 'text-[#475569] hover:bg-[#F1F5F9]'
+            }`}>
+            <span className="truncate">{session.title || '새 대화'}</span>
+          </button>
+        ))}
+      </div>
+    </aside>
+  )
+}
+
+function SourceViewer({ open, activeCitation, citations = [], onSelectCitation, onToggle }) {
+  if (!open) {
+    return (
+      <button type="button" onClick={onToggle}
+        className="hidden border-l border-[#E2E8F0] bg-white px-2 text-xs text-[#64748B] transition-colors hover:bg-[#F8FAFC] xl:block"
+        title="Show sources">
+        &lt;
+      </button>
+    )
+  }
+  const shown = activeCitation || citations[0]
+  return (
+    <aside className="hidden w-80 shrink-0 border-l border-[#E2E8F0] bg-white xl:flex xl:flex-col">
+      <div className="flex items-center justify-between border-b border-[#E2E8F0] px-4 py-3">
+        <div>
+          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#64748B]">Source</div>
+          <div className="mt-1 text-sm font-semibold text-[#1E293B]">PDF evidence</div>
+        </div>
+        <button type="button" onClick={onToggle}
+          className="rounded-md border border-[#E2E8F0] px-2 py-1 text-xs text-[#64748B] hover:bg-[#F1F5F9]"
+          title="Hide sources">
+          &gt;
+        </button>
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto p-4">
+        {!shown ? (
+          <div className="rounded-md border border-dashed border-[#CBD5E1] bg-[#F8FAFC] p-4 text-sm leading-6 text-[#64748B]">
+            답변의 인용 배지 [1] 또는 아래 citation 항목을 클릭하면 이곳에 근거가 표시됩니다.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="rounded-md border border-[#E2E8F0] bg-[#F8FAFC] p-3">
+              <div className="mb-2 inline-flex rounded border border-[#C7D2FE] bg-[#EEF2FF] px-2 py-1 text-xs font-semibold text-[#4F46E5]">
+                [{shown.index}]
+              </div>
+              <h3 className="text-sm font-semibold leading-6 text-[#1E293B]">{shown.title || '(제목 없음)'}</h3>
+              <p className="mt-1 text-xs text-[#64748B]">
+                {[shown.author, shown.year, shown.page ? `p.${shown.page}` : ''].filter(Boolean).join(' · ')}
+              </p>
+            </div>
+            <div className="animate-[pulse_900ms_ease-out_1] rounded-md border border-[#FACC15] bg-[#FEF08A]/60 p-3 text-sm leading-7 text-[#1E293B]">
+              {shown.caption || shown.figure_type || '선택한 citation의 원문 PDF 위치/텍스트 미리보기가 여기에 표시됩니다.'}
+            </div>
+            <div className="space-y-2">
+              {citations.map(citation => (
+                <button key={citation.index} type="button" onClick={() => onSelectCitation(citation)}
+                  className={`w-full rounded-md border px-3 py-2 text-left text-xs transition-colors ${
+                    Number(citation.index) === Number(shown.index)
+                      ? 'border-[#4F46E5] bg-[#EEF2FF] text-[#4F46E5]'
+                      : 'border-[#E2E8F0] bg-white text-[#475569] hover:bg-[#F1F5F9]'
+                  }`}>
+                  [{citation.index}] {citation.title || '(제목 없음)'}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </aside>
   )
 }
 
@@ -149,6 +303,8 @@ export default function Chat({ backend }) {
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleDraft, setTitleDraft] = useState('')
   const [loading, setLoading] = useState(false)
+  const [sourcePanelOpen, setSourcePanelOpen] = useState(true)
+  const [activeCitationIndex, setActiveCitationIndex] = useState(null)
   const bottomRef = useRef(null)
   const inputRef = useRef(null)
   const pendingTextRef = useRef('')
@@ -163,6 +319,15 @@ export default function Chat({ backend }) {
   const slashMatches = trimmedInput.startsWith('/')
     ? SLASH_COMMANDS.filter(command => !slashQuery || command.name.startsWith(slashQuery) || command.label.includes(slashQuery))
     : []
+  const latestAssistant = [...messages].reverse().find(m => m.role === 'assistant' && ((m.citations || []).length || (m.sources || []).length))
+  const latestCitations = latestAssistant?.citations || []
+  const latestSources = latestAssistant?.sources || []
+  const activeCitation = latestCitations.find(c => Number(c.index) === Number(activeCitationIndex)) || null
+
+  function handleCitationClick(citation) {
+    setActiveCitationIndex(citation?.index ?? null)
+    setSourcePanelOpen(true)
+  }
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -523,33 +688,45 @@ export default function Chat({ backend }) {
   }
 
   return (
-    <div className="flex h-full flex-col bg-[#f6f6f2]">
-      <div className="border-b border-[#d8dbe1] bg-white/95 px-5 py-3 shadow-sm">
+    <div className="flex h-full bg-[#F8FAFC] font-['Inter','Pretendard',system-ui,sans-serif] text-[#1E293B]">
+      <SourceSidebar
+        sources={latestSources}
+        sessions={sessions}
+        activeSessionId={activeSession.id}
+        onSelectSession={setActiveSessionId}
+        onNewSession={createConversation}
+      />
+      <main className="flex min-w-0 flex-1 flex-col">
+      <div className="border-b border-[#E2E8F0] bg-white/95 px-5 py-3 shadow-sm">
         <div className="mb-3 flex items-center justify-between gap-4">
           <div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#697386]">Decision desk</div>
-            <h1 className="mt-0.5 text-lg font-semibold text-[#171717]">Research Companion</h1>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#64748B]">Academic RAG desk</div>
+            <h1 className="mt-0.5 text-lg font-semibold text-[#1E293B]">Research Companion</h1>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-72">
               <LocalAISetup backend={backend} />
             </div>
-            <span className="rounded-md border border-[#b8ece4] bg-[#ecfffb] px-2 py-1 text-xs font-medium text-[#086c61]">Library-grounded</span>
-            <span className="rounded-md border border-[#f2d49a] bg-[#fff7e6] px-2 py-1 text-xs font-medium text-[#8a5a00]">Visual evidence ready</span>
+            <button type="button" onClick={() => setSourcePanelOpen(v => !v)}
+              className="rounded-md border border-[#E2E8F0] bg-[#F8FAFC] px-2 py-1 text-xs font-medium text-[#475569] hover:bg-[#F1F5F9]">
+              {sourcePanelOpen ? 'Hide sources >' : '< Show sources'}
+            </button>
+            <span className="rounded-md border border-[#BBF7D0] bg-[#F0FDF4] px-2 py-1 text-xs font-medium text-[#059669]">Library-grounded</span>
+            <span className="rounded-md border border-[#C7D2FE] bg-[#EEF2FF] px-2 py-1 text-xs font-medium text-[#4F46E5]">Visual evidence ready</span>
           </div>
         </div>
         <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
           <select value={activeSession.id}
             onChange={e => setActiveSessionId(e.target.value)}
-            className="max-w-[18rem] truncate rounded-md border border-[#dce2e8] bg-[#f8fafc] px-2 py-1.5 text-xs text-[#20242b] focus:outline-none focus:ring-2 focus:ring-[#6ee7d8]">
+            className="max-w-[18rem] truncate rounded-md border border-[#E2E8F0] bg-[#F8FAFC] px-2 py-1.5 text-xs text-[#1E293B] focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/40">
             {sessions.map(session => (
               <option key={session.id} value={session.id}>
                 {session.title || '새 대화'}
               </option>
             ))}
           </select>
-          <div className="hidden text-xs text-[#7b8190] sm:block">
+          <div className="hidden text-xs text-[#64748B] sm:block">
             질문 {messages.filter(m => m.role === 'user').length}개
           </div>
           {editingTitle ? (
@@ -561,20 +738,20 @@ export default function Chat({ backend }) {
                   if (e.key === 'Escape') cancelTitleEdit()
                 }}
                 autoFocus
-                className="w-48 rounded-md border border-[#dce2e8] bg-white px-2 py-1.5 text-xs text-[#171717] focus:outline-none focus:ring-2 focus:ring-[#6ee7d8]"
+                className="w-48 rounded-md border border-[#E2E8F0] bg-white px-2 py-1.5 text-xs text-[#1E293B] focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/40"
               />
               <button onClick={saveTitleEdit}
-                className="rounded-md px-2 py-1.5 text-xs text-[#086c61] hover:bg-[#ecfffb]">
+                className="rounded-md px-2 py-1.5 text-xs text-[#4F46E5] hover:bg-[#EEF2FF]">
                 저장
               </button>
               <button onClick={cancelTitleEdit}
-                className="rounded-md px-2 py-1.5 text-xs text-[#697386] hover:bg-[#eef1f4]">
+                className="rounded-md px-2 py-1.5 text-xs text-[#64748B] hover:bg-[#F1F5F9]">
                 취소
               </button>
             </div>
           ) : (
             <button onClick={startTitleEdit}
-              className="rounded-md px-2 py-1.5 text-xs text-[#697386] hover:bg-[#eef1f4] hover:text-[#171717]">
+              className="rounded-md px-2 py-1.5 text-xs text-[#64748B] hover:bg-[#F1F5F9] hover:text-[#1E293B]">
               제목 수정
             </button>
           )}
@@ -582,34 +759,34 @@ export default function Chat({ backend }) {
         <div className="flex shrink-0 items-center gap-1.5">
           <button onClick={createConversation}
             disabled={loading}
-            className="rounded-md bg-[#151a23] px-2.5 py-1.5 text-xs font-medium text-white hover:bg-[#283241] disabled:opacity-40">
+            className="rounded-md bg-[#4F46E5] px-2.5 py-1.5 text-xs font-medium text-white hover:bg-[#4338CA] disabled:opacity-40">
             새 대화
           </button>
           <button onClick={clearConversation}
             disabled={loading || messages.length === 0}
-            className="rounded-md px-2 py-1.5 text-xs text-[#697386] hover:bg-[#eef1f4] hover:text-[#171717] disabled:opacity-40">
+            className="rounded-md px-2 py-1.5 text-xs text-[#64748B] hover:bg-[#F1F5F9] hover:text-[#1E293B] disabled:opacity-40">
             비우기
           </button>
         </div>
       </div>
       </div>
-      <div className="flex-1 overflow-y-auto px-6 py-6">
+      <div className="flex-1 overflow-y-auto bg-[#F8FAFC] px-6 py-6">
         <div className="mx-auto max-w-5xl space-y-6">
         {messages.length === 0 && (
           <div className="grid min-h-[70vh] place-items-center">
-          <div className="w-full max-w-3xl border border-[#d8dbe1] bg-white p-8 shadow-sm">
+          <div className="w-full max-w-3xl border border-[#E2E8F0] bg-white p-8 shadow-sm">
             <div className="max-w-xl space-y-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-md bg-[#151a23] text-sm font-semibold text-white">
+              <div className="flex h-12 w-12 items-center justify-center rounded-md bg-[#4F46E5] text-sm font-semibold text-white">
                 RC
               </div>
-              <h2 className="text-2xl font-semibold text-[#171717]">Ask for a research judgment.</h2>
-              <p className="text-sm leading-7 text-[#59606b]">
+              <h2 className="text-2xl font-semibold text-[#1E293B]">Ask for a research judgment.</h2>
+              <p className="text-sm leading-[1.8] text-[#475569]">
                 Turn your library into a judgment: contribution, risk, and the next test.
               </p>
             </div>
             <div className="mt-5 flex flex-wrap gap-1.5">
               {LENSES.map(lens => (
-                <span key={lens} className="rounded-md border border-[#dce2e8] bg-[#f8fafc] px-2 py-1 text-xs text-[#59606b]">
+                <span key={lens} className="rounded-md border border-[#E2E8F0] bg-[#F8FAFC] px-2 py-1 text-xs text-[#475569]">
                   {lens}
                 </span>
               ))}
@@ -617,7 +794,7 @@ export default function Chat({ backend }) {
             <div className="mt-6 grid gap-2">
               {EXAMPLES.map(ex => (
                 <button key={ex} onClick={() => sendMessage(ex)}
-                  className="border border-[#dce2e8] bg-[#f8fafc] px-4 py-3 text-left text-sm text-[#20242b] transition-colors hover:border-[#2dd4bf] hover:bg-[#ecfffb]">
+                  className="border border-[#E2E8F0] bg-[#F8FAFC] px-4 py-3 text-left text-sm leading-[1.6] text-[#1E293B] transition-colors hover:border-[#C7D2FE] hover:bg-[#EEF2FF]">
                   {ex}
                 </button>
               ))}
@@ -629,8 +806,8 @@ export default function Chat({ backend }) {
         {messages.map((msg, i) => (
           <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             {msg.role === 'user' && (
-              <div className="max-w-2xl border border-[#dce2e8] bg-white px-4 py-3 text-sm leading-7 text-[#171717] shadow-sm">
-                <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-[#7b8190]">Question</div>
+              <div className="max-w-2xl border border-[#E2E8F0] bg-white px-4 py-3 text-sm leading-[1.7] text-[#1E293B] shadow-sm">
+                <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-[#64748B]">Question</div>
                 <div>{msg.content}</div>
               </div>
             )}
@@ -638,22 +815,22 @@ export default function Chat({ backend }) {
             {msg.role === 'assistant' && (
               <div className="w-full max-w-4xl space-y-3">
                 <SourcePreview sources={msg.sources} streaming={msg.streaming} />
-                <div className="border-l-4 border-[#0f9f8d] bg-white px-5 py-4 min-h-[2.5rem] shadow-sm ring-1 ring-[#d8dbe1]">
-                  <div className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#697386]">
-                    <span className="h-1.5 w-1.5 rounded-full bg-[#0f9f8d]" />
+                <div className="border-l-4 border-[#059669] bg-[#F0FDF4] px-5 py-4 min-h-[2.5rem] shadow-sm ring-1 ring-[#D1FAE5]">
+                  <div className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#64748B]">
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#059669]" />
                     Decision memo
                   </div>
                   {msg.content ? (
                     msg.streaming ? (
                       <StreamingAnswer content={msg.content} />
                     ) : (
-                      <div className="prose prose-sm max-w-none text-[#20242b] prose-headings:mt-4 prose-headings:mb-2 prose-headings:text-[#171717] prose-strong:text-[#171717]">
-                        <ReactMarkdown components={markdownComponents}>{msg.content}</ReactMarkdown>
+                      <div className="prose prose-sm max-w-none text-[#1E293B] prose-headings:mt-4 prose-headings:mb-2 prose-headings:text-[#1E293B] prose-strong:text-[#1E293B]">
+                        <ReactMarkdown components={createMarkdownComponents(msg.citations ?? [], handleCitationClick)}>{msg.content}</ReactMarkdown>
                       </div>
                     )
                   ) : (
-                    <div className="flex items-center gap-2 h-5 text-xs text-[#59606b]">
-                      <span className="w-1.5 h-1.5 bg-[#0f9f8d] rounded-full animate-pulse" />
+                    <div className="flex items-center gap-2 h-5 text-xs text-[#475569]">
+                      <span className="w-1.5 h-1.5 bg-[#059669] rounded-full animate-pulse" />
                       {msg.sources?.length ? 'Synthesizing decision memo...' : 'Finding relevant evidence...'}
                     </div>
                   )}
@@ -661,7 +838,12 @@ export default function Chat({ backend }) {
 
                 {!msg.streaming && msg.confidence && (
                   <div className="space-y-2 pl-1">
-                    <CitationPanel confidence={msg.confidence} citations={msg.citations ?? []} />
+                    <CitationPanel
+                      confidence={msg.confidence}
+                      citations={msg.citations ?? []}
+                      activeIndex={activeCitationIndex}
+                      onCitationClick={handleCitationClick}
+                    />
                   </div>
                 )}
               </div>
@@ -679,20 +861,20 @@ export default function Chat({ backend }) {
         </div>
       </div>
 
-      <div className="border-t border-[#d8dbe1] bg-white px-6 py-4 shadow-[0_-1px_8px_rgba(15,23,42,0.04)]">
+      <div className="border-t border-[#E2E8F0] bg-white px-6 py-4 shadow-[0_-1px_8px_rgba(15,23,42,0.04)]">
         <div className="mx-auto flex max-w-5xl items-end gap-2">
           <div className="relative flex-1">
             {slashMatches.length > 0 && (
-              <div className="absolute bottom-full left-0 right-0 mb-2 overflow-hidden rounded-md border border-[#dce2e8] bg-white shadow-lg">
+              <div className="absolute bottom-full left-0 right-0 mb-2 overflow-hidden rounded-md border border-[#E2E8F0] bg-white shadow-lg">
                 {slashMatches.map(command => (
                   <button key={command.name}
                     onMouseDown={e => {
                       e.preventDefault()
                       runSlashCommand(command.label)
                     }}
-                    className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-xs hover:bg-[#eef1f4]">
-                    <span className="font-mono font-medium text-[#171717]">{command.label}</span>
-                    <span className="truncate text-[#697386]">{command.description}</span>
+                    className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-xs hover:bg-[#F1F5F9]">
+                    <span className="font-mono font-medium text-[#1E293B]">{command.label}</span>
+                    <span className="truncate text-[#64748B]">{command.description}</span>
                   </button>
                 ))}
               </div>
@@ -704,14 +886,14 @@ export default function Chat({ backend }) {
               onCompositionEnd={() => { composingRef.current = false }}
               placeholder="Ask about a contribution gap, project risk, or type / for commands..."
               rows={1}
-              className="w-full resize-none rounded-md border border-[#cfd6df] bg-[#f8fafc] px-4 py-3 text-sm text-[#171717] focus:outline-none focus:ring-2 focus:ring-[#2dd4bf] max-h-32 overflow-y-auto"
+              className="w-full resize-none rounded-md border border-[#CBD5E1] bg-[#F8FAFC] px-4 py-3 text-sm leading-[1.6] text-[#1E293B] focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/40 max-h-32 overflow-y-auto"
               onInput={e => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 128) + 'px' }}
             />
           </div>
           <button onClick={() => loading ? stopGeneration() : sendMessage(input)}
             disabled={!loading && !input.trim()}
             aria-label="Send message"
-            className="rounded-md bg-[#151a23] p-3 text-white transition-colors hover:bg-[#283241] disabled:cursor-not-allowed disabled:opacity-40 shrink-0">
+            className="rounded-md bg-[#4F46E5] p-3 text-white transition-colors hover:bg-[#4338CA] disabled:cursor-not-allowed disabled:opacity-40 shrink-0">
             {loading ? (
               <span className="block h-4 w-4 rounded-sm bg-current" />
             ) : (
@@ -722,6 +904,14 @@ export default function Chat({ backend }) {
           </button>
         </div>
       </div>
+      </main>
+      <SourceViewer
+        open={sourcePanelOpen}
+        activeCitation={activeCitation}
+        citations={latestCitations}
+        onSelectCitation={handleCitationClick}
+        onToggle={() => setSourcePanelOpen(v => !v)}
+      />
     </div>
   )
 }

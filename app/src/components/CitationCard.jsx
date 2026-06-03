@@ -1,4 +1,4 @@
-export default function CitationCard({ citation }) {
+export default function CitationCard({ citation, active = false, onSelect }) {
   const { index, title, author, year, page, source_type, is_user_memo, parse_quality_warning, content_type, figure_type, caption } = citation
 
   const isNotion = source_type?.startsWith('notion') || is_user_memo
@@ -18,7 +18,10 @@ export default function CitationCard({ citation }) {
   }
 
   return (
-    <div className="flex items-start gap-2.5 rounded-md border border-[#dce2e8] bg-[#f8fafc] p-3 transition-colors hover:bg-white">
+    <button type="button" onClick={() => onSelect?.(citation)}
+      className={`flex w-full items-start gap-2.5 rounded-md border p-3 text-left transition-colors ${
+        active ? 'border-[#4F46E5] bg-[#EEF2FF]' : 'border-[#E2E8F0] bg-[#F8FAFC] hover:bg-white'
+      }`}>
       <span className="text-xs font-bold text-[#8a93a3] mt-0.5 w-4 shrink-0">[{index}]</span>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5 flex-wrap">
@@ -34,6 +37,6 @@ export default function CitationCard({ citation }) {
         {caption && <p className="text-xs text-[#59606b] mt-0.5 line-clamp-2">{caption}</p>}
         {meta && <p className="text-xs text-[#697386] mt-0.5">{meta}</p>}
       </div>
-    </div>
+    </button>
   )
 }

@@ -52,26 +52,26 @@ export default function App() {
   }
 
   return (
-    <div className="flex h-screen bg-[#f6f6f2] text-[#171717]">
-      <div className="w-20 border-r border-[#d8dbe1] bg-[#151a23] flex flex-col items-center py-4 gap-3 text-white">
-        <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-md bg-[#2dd4bf] text-xs font-bold text-[#0f1720] shadow-sm">
+    <div className="flex h-screen bg-[#F8FAFC] text-[#1E293B]">
+      <div className="w-20 border-r border-[#E2E8F0] bg-white flex flex-col items-center py-4 gap-3">
+        <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-md bg-[#4F46E5] text-xs font-bold text-white shadow-sm">
           RC
         </div>
         <button onClick={() => setPage('chat')} title="Decision desk"
           className={`flex h-12 w-14 flex-col items-center justify-center rounded-md text-[11px] transition-colors ${
-            page === 'chat' ? 'bg-white text-[#151a23]' : 'text-[#aab2bf] hover:bg-[#252b36] hover:text-white'
+            page === 'chat' ? 'bg-[#EEF2FF] text-[#4F46E5]' : 'text-[#64748B] hover:bg-[#F1F5F9] hover:text-[#1E293B]'
           }`}>
           <span className="text-sm font-semibold">D</span>
           Desk
         </button>
         <button onClick={() => setPage('library')} title="Library"
           className={`flex h-12 w-14 flex-col items-center justify-center rounded-md text-[11px] transition-colors ${
-            page === 'library' ? 'bg-white text-[#151a23]' : 'text-[#aab2bf] hover:bg-[#252b36] hover:text-white'
+            page === 'library' ? 'bg-[#EEF2FF] text-[#4F46E5]' : 'text-[#64748B] hover:bg-[#F1F5F9] hover:text-[#1E293B]'
           }`}>
           <span className="text-sm font-semibold">L</span>
           Library
         </button>
-        <div className="mt-auto h-8 w-8 rounded-md border border-[#384150] bg-[#1f2631]" title="Local workspace" />
+        <div className="mt-auto h-8 w-8 rounded-md border border-[#E2E8F0] bg-[#F8FAFC]" title="Local workspace" />
       </div>
       <div className="flex-1 overflow-hidden">
         {page === 'chat'    && <Chat    backend={BACKEND} />}
