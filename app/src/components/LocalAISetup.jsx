@@ -1,5 +1,13 @@
 import { useEffect, useState } from 'react'
 
+function modelTone(index) {
+  return [
+    'border-[#c8d7cd] bg-[#f7fbf8] text-[#315f4f]',
+    'border-[#d8cfbd] bg-[#fffaf0] text-[#71552b]',
+    'border-[#c9d3dd] bg-[#f6f9fb] text-[#34566f]',
+  ][index % 3]
+}
+
 export default function LocalAISetup({ backend }) {
   const [open, setOpen] = useState(false)
   const [status, setStatus] = useState(null)
@@ -80,21 +88,41 @@ export default function LocalAISetup({ backend }) {
             </div>
           )}
           <div className="space-y-2">
-            {(status?.recommended || []).map(item => {
+            {(status?.recommended || []).map((item, index) => {
               const installed = status?.installed_models?.includes(item.name)
+              const buttonLabel = installed ? '설치됨' : pulling === item.name ? '설치 중' : serverReady ? '설치' : '대기'
               return (
-                <div key={item.name} className="flex items-center justify-between gap-3 rounded-md bg-[#f4f1ea] px-3 py-2">
-                  <div>
-                    <div className="font-mono text-[#20211f]">{item.name}</div>
-                    <div className="text-[#8c8171]">{item.role} · {item.target}</div>
-                    <div className="mt-1 text-[#6b6258]">
-                      다운로드 {item.download_size || '용량 확인 필요'} · 여유 공간 {item.free_space || '10GB 이상 권장'}
+                <div key={item.name} className="rounded-md border border-[#e3dccf] bg-[#fffdf8] p-3 shadow-sm">
+                  <div className="flex min-w-0 items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="truncate font-mono text-[11px] font-semibold text-[#20211f]" title={item.name}>
+                        {item.name}
+                      </div>
+                      <div className="mt-1 text-[#8c8171]">{item.role}</div>
+                    </div>
+                    <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium ${modelTone(index)}`}>
+                      {index === 0 ? 'Light' : index === 1 ? 'Default' : 'Deep'}
+                    </span>
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <div className="rounded-md bg-[#f4f1ea] px-2 py-1.5">
+                      <div className="text-[10px] uppercase tracking-[0.12em] text-[#9a8f80]">Download</div>
+                      <div className="mt-0.5 whitespace-nowrap font-medium text-[#4c514b]">
+                        {item.download_size || '확인 필요'}
+                      </div>
+                    </div>
+                    <div className="rounded-md bg-[#f4f1ea] px-2 py-1.5">
+                      <div className="text-[10px] uppercase tracking-[0.12em] text-[#9a8f80]">Storage</div>
+                      <div className="mt-0.5 whitespace-nowrap font-medium text-[#4c514b]">
+                        {item.free_space || '10GB 이상'}
+                      </div>
                     </div>
                   </div>
+                  <div className="mt-2 text-[#8c8171]">{item.target}</div>
                   <button onClick={() => pull(item.name)}
                     disabled={installed || !!pulling || !serverReady}
-                    className="rounded-md bg-[#243c35] px-2 py-1 text-white disabled:bg-[#cfc6b6]">
-                    {installed ? '설치됨' : pulling === item.name ? '설치 중' : serverReady ? '설치' : '대기'}
+                    className="mt-3 flex h-8 w-full items-center justify-center rounded-md bg-[#243c35] px-3 text-xs font-medium text-white transition-colors hover:bg-[#31564b] disabled:bg-[#cfc6b6] disabled:text-[#756d61]">
+                    <span className="whitespace-nowrap">{buttonLabel}</span>
                   </button>
                 </div>
               )
