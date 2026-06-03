@@ -35,6 +35,7 @@ def format_citations(results: list[dict]) -> list[dict]:
                     "page": meta.get("page_number", 0),
                     "bbox": meta.get("bbox", ""),
                     "doi": meta.get("doi", ""),
+                    "source": meta.get("source", ""),
                 }
             )
         else:

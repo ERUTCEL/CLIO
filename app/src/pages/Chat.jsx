@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown'
 import ConfidenceBadge from '../components/ConfidenceBadge'
 import CitationCard from '../components/CitationCard'
 import LocalAISetup from '../components/LocalAISetup'
+import BrandMark from '../components/BrandMark'
 
 const EXAMPLES = [
   '내 아이디어가 논문 기여로 충분한지 냉정하게 판단해줘.',
@@ -231,7 +232,7 @@ function SourceSidebar({ sources = [], sessions = [], activeSessionId, onSelectS
   )
 }
 
-function SourceViewer({ open, activeCitation, citations = [], onSelectCitation, onToggle }) {
+function SourceViewer({ backend, open, activeCitation, citations = [], onSelectCitation, onToggle }) {
   if (!open) {
     return (
       <button type="button" onClick={onToggle}
@@ -242,6 +243,9 @@ function SourceViewer({ open, activeCitation, citations = [], onSelectCitation, 
     )
   }
   const shown = activeCitation || citations[0]
+  const pdfUrl = shown?.source
+    ? `${backend}/sources/pdf?path=${encodeURIComponent(shown.source)}${shown.page ? `#page=${shown.page}` : ''}`
+    : ''
   return (
     <aside className="hidden w-80 shrink-0 border-l border-[#E2E8F0] bg-white xl:flex xl:flex-col">
       <div className="flex items-center justify-between border-b border-[#E2E8F0] px-4 py-3">
@@ -274,6 +278,25 @@ function SourceViewer({ open, activeCitation, citations = [], onSelectCitation, 
             <div className="animate-[pulse_900ms_ease-out_1] rounded-md border border-[#FACC15] bg-[#FEF08A]/60 p-3 text-sm leading-7 text-[#1E293B]">
               {shown.caption || shown.figure_type || '선택한 citation의 원문 PDF 위치/텍스트 미리보기가 여기에 표시됩니다.'}
             </div>
+            {pdfUrl ? (
+              <div className="overflow-hidden rounded-md border border-[#E2E8F0] bg-[#F8FAFC]">
+                <div className="flex items-center justify-between border-b border-[#E2E8F0] px-3 py-2 text-xs text-[#64748B]">
+                  <span>PDF page {shown.page || 1}</span>
+                  <a href={pdfUrl} target="_blank" rel="noreferrer" className="text-[#4F46E5] hover:underline">
+                    새 창
+                  </a>
+                </div>
+                <iframe
+                  title={`PDF source ${shown.index}`}
+                  src={pdfUrl}
+                  className="h-[26rem] w-full bg-white"
+                />
+              </div>
+            ) : (
+              <div className="rounded-md border border-dashed border-[#CBD5E1] bg-[#F8FAFC] p-3 text-xs leading-6 text-[#64748B]">
+                이 citation에는 PDF 파일 경로가 없습니다. 새로 인덱싱한 PDF부터 페이지 뷰어가 활성화됩니다.
+              </div>
+            )}
             <div className="space-y-2">
               {citations.map(citation => (
                 <button key={citation.index} type="button" onClick={() => onSelectCitation(citation)}
@@ -776,9 +799,7 @@ export default function Chat({ backend }) {
           <div className="grid min-h-[70vh] place-items-center">
           <div className="w-full max-w-3xl border border-[#E2E8F0] bg-white p-8 shadow-sm">
             <div className="max-w-xl space-y-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-md bg-[#4F46E5] text-sm font-semibold text-white">
-                RC
-              </div>
+              <BrandMark size="lg" />
               <h2 className="text-2xl font-semibold text-[#1E293B]">Ask for a research judgment.</h2>
               <p className="text-sm leading-[1.8] text-[#475569]">
                 Turn your library into a judgment: contribution, risk, and the next test.
@@ -906,6 +927,7 @@ export default function Chat({ backend }) {
       </div>
       </main>
       <SourceViewer
+        backend={backend}
         open={sourcePanelOpen}
         activeCitation={activeCitation}
         citations={latestCitations}

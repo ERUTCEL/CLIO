@@ -59,78 +59,96 @@ export default function LocalAISetup({ backend }) {
   const serverReady = status?.server_running !== false
 
   return (
-    <div className="rounded-md border border-[#dce2e8] bg-white shadow-sm">
+    <div className="relative rounded-md border border-[#E2E8F0] bg-white shadow-sm">
       <button onClick={() => setOpen(v => !v)}
-        className="flex w-full items-center justify-between px-3 py-2 text-left text-xs">
-        <span className="font-medium text-[#171717]">Local AI</span>
-        <span className={available ? 'text-[#086c61]' : 'text-[#7b8190]'}>
+        className="flex h-9 w-full items-center justify-between gap-3 px-3 text-left text-xs">
+        <span className="flex items-center gap-2 font-medium text-[#1E293B]">
+          <span className={`h-1.5 w-1.5 rounded-full ${available ? 'bg-[#059669]' : serverReady ? 'bg-[#F59E0B]' : 'bg-[#94A3B8]'}`} />
+          Local AI
+        </span>
+        <span className={`max-w-[8rem] truncate ${available ? 'text-[#059669]' : 'text-[#64748B]'}`}>
           {available ? status.model : '설정 필요'}
         </span>
       </button>
       {open && (
-        <div className="space-y-3 border-t border-[#eef1f4] p-3 text-xs text-[#59606b]">
-          <p>
-            로컬 AI는 필수는 아니지만, 그림/다이어그램 근거를 정리할 때 품질을 올려줍니다.
-            최소 10GB, 기본 모델은 20GB 이상의 여유 저장공간을 권장합니다.
-          </p>
-          <div className="grid gap-2 rounded-md bg-[#f8fafc] p-3 text-[#59606b]">
-            <div className="flex items-center justify-between gap-3">
-              <span>전체 권장 구성</span>
-              <span className="font-medium text-[#171717]">40GB 이상 여유 공간</span>
+        <div className="absolute right-0 top-full z-30 mt-2 max-h-[34rem] w-[28rem] overflow-y-auto rounded-md border border-[#E2E8F0] bg-white p-4 text-xs text-[#475569] shadow-xl">
+          <div className="mb-4 flex items-start justify-between gap-3">
+            <div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#64748B]">Optional local engine</div>
+              <h3 className="mt-1 text-sm font-semibold text-[#1E293B]">로컬 AI 설치</h3>
             </div>
-            <div className="text-[#7b8190]">
-              처음에는 가벼운 모델만 설치하고, 논문/다이어그램 추론을 많이 쓸 때 기본 또는 깊은 추론 모델을 추가하세요.
+            <button type="button" onClick={() => setOpen(false)}
+              className="rounded-md border border-[#E2E8F0] px-2 py-1 text-[#64748B] hover:bg-[#F1F5F9]">
+              닫기
+            </button>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="rounded-md border border-[#E2E8F0] bg-[#F8FAFC] p-3">
+              <div className="text-[10px] uppercase tracking-[0.12em] text-[#94A3B8]">Required</div>
+              <div className="mt-1 font-semibold text-[#1E293B]">10GB+</div>
+            </div>
+            <div className="rounded-md border border-[#E2E8F0] bg-[#F8FAFC] p-3">
+              <div className="text-[10px] uppercase tracking-[0.12em] text-[#94A3B8]">Default</div>
+              <div className="mt-1 font-semibold text-[#1E293B]">20GB+</div>
+            </div>
+            <div className="rounded-md border border-[#E2E8F0] bg-[#F8FAFC] p-3">
+              <div className="text-[10px] uppercase tracking-[0.12em] text-[#94A3B8]">Full set</div>
+              <div className="mt-1 font-semibold text-[#1E293B]">40GB+</div>
             </div>
           </div>
+          <p className="mt-3 leading-6">
+            로컬 AI는 필수는 아니지만, 그림/다이어그램 근거 정리 품질을 올려줍니다.
+            처음에는 Light 모델만 설치하고 필요할 때 Default나 Deep 모델을 추가하세요.
+          </p>
           {status?.server_running === false && (
-            <div className="rounded-md border border-[#f2d49a] bg-[#fff7e6] px-3 py-2 text-[#8a5a00]">
+            <div className="mt-3 rounded-md border border-[#FDE68A] bg-[#FEFCE8] px-3 py-2 text-[#854D0E]">
               Ollama가 실행 중이 아닙니다. 로컬 모델을 설치하려면 Ollama를 먼저 설치하거나 실행해야 합니다.
             </div>
           )}
-          <div className="space-y-2">
+          <div className="mt-4 space-y-2">
             {(status?.recommended || []).map((item, index) => {
               const installed = status?.installed_models?.includes(item.name)
               const buttonLabel = installed ? '설치됨' : pulling === item.name ? '설치 중' : serverReady ? '설치' : '대기'
               return (
-                <div key={item.name} className="rounded-md border border-[#dce2e8] bg-white p-3 shadow-sm">
+                <div key={item.name} className="rounded-md border border-[#E2E8F0] bg-white p-3 shadow-sm">
                   <div className="flex min-w-0 items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <div className="truncate font-mono text-[11px] font-semibold text-[#171717]" title={item.name}>
+                      <div className="truncate font-mono text-[11px] font-semibold text-[#1E293B]" title={item.name}>
                         {item.name}
                       </div>
-                      <div className="mt-1 text-[#7b8190]">{item.role}</div>
+                      <div className="mt-1 text-[#64748B]">{item.role}</div>
                     </div>
                     <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium ${modelTone(index)}`}>
                       {index === 0 ? 'Light' : index === 1 ? 'Default' : 'Deep'}
                     </span>
                   </div>
                   <div className="mt-3 grid grid-cols-2 gap-2">
-                    <div className="rounded-md bg-[#f8fafc] px-2 py-1.5">
-                      <div className="text-[10px] uppercase tracking-[0.12em] text-[#8a93a3]">Download</div>
-                      <div className="mt-0.5 whitespace-nowrap font-medium text-[#20242b]">
+                    <div className="rounded-md bg-[#F8FAFC] px-2 py-1.5">
+                      <div className="text-[10px] uppercase tracking-[0.12em] text-[#94A3B8]">Download</div>
+                      <div className="mt-0.5 whitespace-nowrap font-medium text-[#1E293B]">
                         {item.download_size || '확인 필요'}
                       </div>
                     </div>
-                    <div className="rounded-md bg-[#f8fafc] px-2 py-1.5">
-                      <div className="text-[10px] uppercase tracking-[0.12em] text-[#8a93a3]">Storage</div>
-                      <div className="mt-0.5 whitespace-nowrap font-medium text-[#20242b]">
+                    <div className="rounded-md bg-[#F8FAFC] px-2 py-1.5">
+                      <div className="text-[10px] uppercase tracking-[0.12em] text-[#94A3B8]">Storage</div>
+                      <div className="mt-0.5 whitespace-nowrap font-medium text-[#1E293B]">
                         {item.free_space || '10GB 이상'}
                       </div>
                     </div>
                   </div>
-                  <div className="mt-2 text-[#7b8190]">{item.target}</div>
+                  <div className="mt-2 text-[#64748B]">{item.target}</div>
                   <button onClick={() => pull(item.name)}
                     disabled={installed || !!pulling || !serverReady}
-                    className="mt-3 flex h-8 w-full items-center justify-center rounded-md bg-[#151a23] px-3 text-xs font-medium text-white transition-colors hover:bg-[#283241] disabled:bg-[#cfd6df] disabled:text-[#697386]">
+                    className="mt-3 flex h-8 w-full items-center justify-center rounded-md bg-[#4F46E5] px-3 text-xs font-medium text-white transition-colors hover:bg-[#4338CA] disabled:bg-[#CBD5E1] disabled:text-[#64748B]">
                     <span className="whitespace-nowrap">{buttonLabel}</span>
                   </button>
                 </div>
               )
             })}
           </div>
-          {message && <div className="rounded-md bg-[#f8fafc] px-3 py-2 text-[#59606b]">{message}</div>}
+          {message && <div className="mt-3 rounded-md bg-[#F8FAFC] px-3 py-2 text-[#475569]">{message}</div>}
           {!status?.installed_models?.length && (
-            <div className="text-[#7b8190]">
+            <div className="mt-3 text-[#64748B]">
               Ollama 앱이 설치되어 있지 않으면 먼저 Ollama가 필요합니다. 이후 모델 설치는 여기서 처리합니다.
             </div>
           )}

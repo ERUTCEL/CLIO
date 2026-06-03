@@ -1,4 +1,5 @@
 import AddDocPanel from '../components/AddDocPanel'
+import BrandMark from '../components/BrandMark'
 
 export default function Onboarding({ backend, onComplete }) {
   return (
@@ -6,9 +7,7 @@ export default function Onboarding({ backend, onComplete }) {
       <div className="grid w-full max-w-5xl overflow-hidden border border-[#d8dbe1] bg-white shadow-2xl md:grid-cols-[0.85fr_1.15fr]">
 
         <div className="bg-[#151a23] p-8 text-white">
-          <div className="flex h-12 w-12 items-center justify-center rounded-md bg-[#2dd4bf] text-sm font-bold text-[#0f1720]">
-            RC
-          </div>
+          <BrandMark size="lg" />
           <h1 className="mt-8 text-3xl font-bold">Research Companion</h1>
           <p className="mt-3 text-sm leading-7 text-[#c7d0dc]">
             Add papers and notes, then turn them into contribution gaps, project risks, and next-step decisions.

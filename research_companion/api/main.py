@@ -25,6 +25,7 @@ from api.routes.ingest import router as ingest_router
 from api.routes.library import router as library_router
 from api.routes.local_ai import router as local_ai_router
 from api.routes.search import _get_search, router as search_router
+from api.routes.sources import router as sources_router
 from generation.local_reasoner import LocalReasoner
 
 log = structlog.get_logger()
@@ -47,6 +48,7 @@ app.include_router(search_router)
 app.include_router(chat_router)
 app.include_router(library_router)
 app.include_router(local_ai_router)
+app.include_router(sources_router)
 
 # warm-up state
 _ready = {"status": False, "detail": "모델 로딩 중..."}

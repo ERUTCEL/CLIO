@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import Onboarding from './pages/Onboarding'
 import Chat from './pages/Chat'
 import Library from './pages/Library'
+import BrandMark from './components/BrandMark'
 
 const BACKEND = '/api'
 const POLL_MS = 1500
@@ -33,7 +34,7 @@ export default function App() {
   if (!ready) {
     return (
       <div className="min-h-screen bg-[#f7f7f4] flex flex-col items-center justify-center gap-4 text-[#171717]">
-        <div className="flex h-12 w-12 items-center justify-center rounded-md bg-[#151a23] text-sm font-semibold text-white shadow-sm">RC</div>
+        <BrandMark size="lg" />
         <p className="font-semibold text-lg">Research Companion</p>
         <div className="flex items-center gap-2 text-[#59606b] text-sm">
           <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
@@ -54,9 +55,7 @@ export default function App() {
   return (
     <div className="flex h-screen bg-[#F8FAFC] text-[#1E293B]">
       <div className="w-20 border-r border-[#E2E8F0] bg-white flex flex-col items-center py-4 gap-3">
-        <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-md bg-[#4F46E5] text-xs font-bold text-white shadow-sm">
-          RC
-        </div>
+        <div className="mb-2"><BrandMark /></div>
         <button onClick={() => setPage('chat')} title="Decision desk"
           className={`flex h-12 w-14 flex-col items-center justify-center rounded-md text-[11px] transition-colors ${
             page === 'chat' ? 'bg-[#EEF2FF] text-[#4F46E5]' : 'text-[#64748B] hover:bg-[#F1F5F9] hover:text-[#1E293B]'
