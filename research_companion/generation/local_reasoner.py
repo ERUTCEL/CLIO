@@ -102,7 +102,7 @@ class LocalReasoner:
             ],
         }
 
-    def pull_model(self, model: str) -> dict[str, Any]:
+    def pull_model(self, model: str, on_progress=None) -> dict[str, Any]:
         if not self.enabled:
             return {"ok": False, "status": "local reasoner disabled"}
         if not self.server_running():
@@ -114,11 +114,24 @@ class LocalReasoner:
         try:
             res = requests.post(
                 f"{self.base_url}/api/pull",
-                json={"model": model, "stream": False},
+                json={"model": model, "stream": True},
                 timeout=float(os.getenv("LOCAL_REASONER_PULL_TIMEOUT_S", "900")),
+                stream=True,
             )
             res.raise_for_status()
-            return {"ok": True, "status": res.json().get("status", "success"), "model": model}
+            latest: dict[str, Any] = {"status": "downloading", "model": model}
+            for line in res.iter_lines(decode_unicode=True):
+                if not line:
+                    continue
+                try:
+                    latest = json.loads(line)
+                except json.JSONDecodeError:
+                    latest = {"status": line, "model": model}
+                if on_progress:
+                    on_progress(latest)
+
+            status = latest.get("status", "success")
+            return {"ok": "error" not in latest, "status": status, "model": model, "latest": latest}
         except Exception as exc:
             log.warning("local_reasoner_pull_failed", model=model, error=str(exc))
             return {"ok": False, "status": str(exc), "model": model}

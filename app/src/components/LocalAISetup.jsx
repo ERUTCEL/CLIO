@@ -13,6 +13,7 @@ export default function LocalAISetup({ backend }) {
   const [status, setStatus] = useState(null)
   const [message, setMessage] = useState('')
   const [pulling, setPulling] = useState('')
+  const [pullJob, setPullJob] = useState(null)
 
   async function refresh() {
     try {
@@ -39,6 +40,7 @@ export default function LocalAISetup({ backend }) {
       return
     }
     setPulling(model)
+    setPullJob({ status: 'queued', model, percent: null, ollama_status: 'queued' })
     setMessage(`${model} 설치를 시작했습니다. 모델 크기에 따라 오래 걸릴 수 있습니다.`)
     try {
       const res = await fetch(`${backend}/local-ai/pull`, {
@@ -46,19 +48,44 @@ export default function LocalAISetup({ backend }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ model }),
       })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.detail || `서버 오류 ${res.status}`)
+      }
       const job = await res.json()
+      if (job.status === 'failed') {
+        setPulling('')
+        setPullJob({ ...job, status: 'failed' })
+        setMessage('Ollama가 실행 중이 아닙니다. Ollama 앱을 먼저 켠 뒤 “실행 확인”을 누르세요.')
+        refresh()
+        return
+      }
       const id = setInterval(async () => {
-        const s = await fetch(`${backend}/local-ai/pull/${job.job_id}`).then(r => r.json())
-        if (s.status === 'done' || s.status === 'failed' || s.status === 'missing') {
+        try {
+          const s = await fetch(`${backend}/local-ai/pull/${job.job_id}`).then(r => r.json())
+          setPullJob(s)
+          if (s.percent != null) {
+            setMessage(`${model} 다운로드 중... ${s.percent}%`)
+          } else if (s.ollama_status) {
+            setMessage(`${model} 준비 중: ${s.ollama_status}`)
+          }
+          if (s.status === 'done' || s.status === 'failed' || s.status === 'missing') {
+            clearInterval(id)
+            setPulling('')
+            setMessage(s.status === 'done' ? `${model} 설치 완료` : `설치 실패: ${s.error || 'unknown error'}`)
+            refresh()
+          }
+        } catch (err) {
           clearInterval(id)
           setPulling('')
-          setMessage(s.status === 'done' ? `${model} 설치 완료` : `설치 실패: ${s.error || 'unknown error'}`)
-          refresh()
+          setPullJob({ status: 'failed', model, error: err.message })
+          setMessage(`설치 상태를 확인하지 못했습니다: ${err.message}`)
         }
       }, 2000)
-    } catch {
+    } catch (err) {
       setPulling('')
-      setMessage('설치를 시작하지 못했습니다.')
+      setPullJob({ status: 'failed', model, error: err.message })
+      setMessage(`설치를 시작하지 못했습니다: ${err.message}`)
     }
   }
 
@@ -180,6 +207,18 @@ export default function LocalAISetup({ backend }) {
                     </div>
                   </div>
                   <div className="mt-2 text-[#64748B]">{item.target}</div>
+                  {pulling === item.name && pullJob && (
+                    <div className="mt-3">
+                      <div className="mb-1 flex justify-between text-[11px] text-[#64748B]">
+                        <span>{pullJob.ollama_status || pullJob.status || 'downloading'}</span>
+                        <span>{pullJob.percent != null ? `${pullJob.percent}%` : '진행 중'}</span>
+                      </div>
+                      <div className="h-1.5 overflow-hidden rounded-full bg-[#E2E8F0]">
+                        <div className="h-full rounded-full bg-[#4F46E5] transition-all"
+                          style={{ width: pullJob.percent != null ? `${Math.max(3, pullJob.percent)}%` : '12%' }} />
+                      </div>
+                    </div>
+                  )}
                   <button onClick={() => pull(item.name)}
                     disabled={installed || !!pulling || !serverReady}
                     className="mt-3 flex h-8 w-full items-center justify-center rounded-md bg-[#4F46E5] px-3 text-xs font-medium text-white transition-colors hover:bg-[#4338CA] disabled:bg-[#CBD5E1] disabled:text-[#64748B]">
