@@ -11,10 +11,14 @@ log = structlog.get_logger()
 
 _OLLAMA_URL = os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434")
 _DEFAULT_MODEL = os.getenv("LOCAL_REASONER_MODEL", "qwen3:14b")
-_FALLBACK_MODEL = os.getenv("LOCAL_REASONER_FALLBACK_MODEL", "qwen3:7b")
+_FALLBACK_MODEL = os.getenv("LOCAL_REASONER_FALLBACK_MODEL", "qwen3:8b")
 _DEEP_MODEL = os.getenv("LOCAL_REASONER_DEEP_MODEL", "deepseek-r1:14b")
 _ENABLED = os.getenv("LOCAL_REASONER_ENABLED", "true").lower() in ("1", "true", "yes")
 _TIMEOUT_S = float(os.getenv("LOCAL_REASONER_TIMEOUT_S", "12"))
+
+_MODEL_ALIASES = {
+    "qwen3:7b": "qwen3:8b",
+}
 
 
 class LocalReasoner:
@@ -35,9 +39,9 @@ class LocalReasoner:
         timeout_s: float = _TIMEOUT_S,
     ) -> None:
         self.base_url = base_url.rstrip("/")
-        self.model = model
-        self.fallback_model = fallback_model
-        self.deep_model = deep_model
+        self.model = _normalize_model_name(model)
+        self.fallback_model = _normalize_model_name(fallback_model)
+        self.deep_model = _normalize_model_name(deep_model)
         self.enabled = enabled
         self.timeout_s = timeout_s
 
@@ -83,14 +87,14 @@ class LocalReasoner:
                     "name": self.fallback_model,
                     "role": "가벼운 fallback",
                     "target": "8-16GB RAM",
-                    "download_size": "약 4-6GB",
+                    "download_size": "약 5.2GB",
                     "free_space": "10GB 이상",
                 },
                 {
                     "name": self.model,
                     "role": "기본 로컬 조교",
                     "target": "16GB+ RAM 권장",
-                    "download_size": "약 8-10GB",
+                    "download_size": "약 9.3GB",
                     "free_space": "20GB 이상",
                 },
                 {
@@ -104,6 +108,7 @@ class LocalReasoner:
         }
 
     def pull_model(self, model: str, on_progress=None) -> dict[str, Any]:
+        model = _normalize_model_name(model)
         if not self.enabled:
             return {"ok": False, "status": "local reasoner disabled"}
         if not self.server_running():
@@ -228,6 +233,10 @@ JSON shape:
   "needs_human_check": true
 }}
 """
+
+
+def _normalize_model_name(model: str) -> str:
+    return _MODEL_ALIASES.get((model or "").strip(), (model or "").strip())
 
 
 def _parse_json_object(text: str) -> dict[str, Any] | None:

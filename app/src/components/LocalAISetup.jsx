@@ -8,6 +8,10 @@ function modelTone(index) {
   ][index % 3]
 }
 
+function normalizeModelName(model) {
+  return model === 'qwen3:7b' ? 'qwen3:8b' : model
+}
+
 export default function LocalAISetup({ backend }) {
   const [open, setOpen] = useState(false)
   const [status, setStatus] = useState(null)
@@ -39,6 +43,7 @@ export default function LocalAISetup({ backend }) {
       setMessage('Ollama가 실행 중이 아닙니다. Ollama를 먼저 설치하거나 실행한 뒤 다시 시도하세요.')
       return
     }
+    model = normalizeModelName(model)
     setPulling(model)
     setPullJob({ status: 'queued', model, percent: null, ollama_status: 'queued' })
     setMessage(`${model} 설치를 시작했습니다. 모델 크기에 따라 오래 걸릴 수 있습니다.`)
@@ -179,15 +184,16 @@ export default function LocalAISetup({ backend }) {
           )}
           <div className="mt-4 space-y-2">
             {(status?.recommended || []).map((item, index) => {
-              const installed = status?.installed_models?.includes(item.name)
-              const interrupted = pullJob?.status === 'failed' && pullJob?.model === item.name
-              const buttonLabel = installed ? '설치됨' : pulling === item.name ? '설치 중' : interrupted ? '다시 시도' : serverReady ? '설치' : '대기'
+              const modelName = normalizeModelName(item.name)
+              const installed = status?.installed_models?.includes(modelName)
+              const interrupted = pullJob?.status === 'failed' && pullJob?.model === modelName
+              const buttonLabel = installed ? '설치됨' : pulling === modelName ? '설치 중' : interrupted ? '다시 시도' : serverReady ? '설치' : '대기'
               return (
-                <div key={item.name} className="rounded-md border border-[#E2E8F0] bg-white p-3 shadow-sm">
+                <div key={modelName} className="rounded-md border border-[#E2E8F0] bg-white p-3 shadow-sm">
                   <div className="flex min-w-0 items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <div className="truncate font-mono text-[11px] font-semibold text-[#1E293B]" title={item.name}>
-                        {item.name}
+                      <div className="truncate font-mono text-[11px] font-semibold text-[#1E293B]" title={modelName}>
+                        {modelName}
                       </div>
                       <div className="mt-1 text-[#64748B]">{item.role}</div>
                     </div>
@@ -210,7 +216,7 @@ export default function LocalAISetup({ backend }) {
                     </div>
                   </div>
                   <div className="mt-2 text-[#64748B]">{item.target}</div>
-                  {pulling === item.name && pullJob && (
+                  {pulling === modelName && pullJob && (
                     <div className="mt-3">
                       <div className="mb-1 flex justify-between text-[11px] text-[#64748B]">
                         <span>{pullJob.ollama_status || pullJob.status || 'downloading'}</span>
@@ -227,7 +233,7 @@ export default function LocalAISetup({ backend }) {
                       다운로드가 끊겼습니다. 다시 시도하면 이미 받은 부분을 재사용합니다.
                     </div>
                   )}
-                  <button onClick={() => pull(item.name)}
+                  <button onClick={() => pull(modelName)}
                     disabled={installed || !!pulling || !serverReady}
                     className="mt-3 flex h-8 w-full items-center justify-center rounded-md bg-[#4F46E5] px-3 text-xs font-medium text-white transition-colors hover:bg-[#4338CA] disabled:bg-[#CBD5E1] disabled:text-[#64748B]">
                     <span className="whitespace-nowrap">{buttonLabel}</span>
