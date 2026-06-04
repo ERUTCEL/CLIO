@@ -166,7 +166,14 @@ class RAGPipeline:
         _escaped = False
         _answer_done = False
 
-        async for chunk in self._provider.stream_text(system, messages, _MAX_TOKENS):
+        try:
+          stream_iter = self._provider.stream_text(system, messages, _MAX_TOKENS)
+        except Exception as exc:
+            log.error("rag_stream_init_error", error=str(exc))
+            yield {"type": "error", "answer": f"AI 응답 오류: {exc}", "citations": [], "confidence": "no_source"}
+            return
+
+        async for chunk in stream_iter:
             full_text += chunk
 
             if _answer_done:
@@ -208,3 +215,6 @@ class RAGPipeline:
             yield {"type": "done", "citations": _enriched_citations(results, parsed.get("citations", [])), "confidence": confidence}
         except (json.JSONDecodeError, KeyError):
             yield {"type": "done", "citations": _enriched_citations(results), "confidence": confidence}
+        except Exception as exc:
+            log.error("rag_stream_error", error=str(exc))
+            yield {"type": "error", "answer": f"AI 응답 오류: {exc}", "citations": [], "confidence": "no_source"}

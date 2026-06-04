@@ -1,4 +1,5 @@
 import uuid
+from functools import lru_cache
 from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
@@ -16,12 +17,22 @@ router = APIRouter(prefix="/ingest", tags=["ingest"])
 _JOBS: dict[str, dict[str, Any]] = {}
 
 
+@lru_cache(maxsize=1)
+def _get_embedder() -> Embedder:
+    return Embedder()
+
+
+@lru_cache(maxsize=1)
+def _get_store() -> VectorStore:
+    return VectorStore()
+
+
 def _run_local_ingest(job_id: str, path: str) -> None:
     _JOBS[job_id]["status"] = "processing"
     try:
         source = LocalFolderSource()
-        embedder = Embedder()
-        store = VectorStore()
+        embedder = _get_embedder()
+        store = _get_store()
 
         def progress(done: int, total: int) -> None:
             _JOBS[job_id]["processed"] = done
@@ -49,8 +60,8 @@ def _run_notion_ingest(job_id: str, token: str, database_id: str) -> None:
     _JOBS[job_id]["status"] = "processing"
     try:
         reader = NotionReader(token=token)
-        embedder = Embedder()
-        store = VectorStore()
+        embedder = _get_embedder()
+        store = _get_store()
 
         chunks = reader.ingest_database(database_id)
         _JOBS[job_id]["total"] = len(chunks)

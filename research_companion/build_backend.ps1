@@ -18,9 +18,10 @@ Write-Host "Building Windows backend binary..."
   --hidden-import uvicorn.protocols.websockets.auto `
   --hidden-import uvicorn.lifespan.on `
   --hidden-import anthropic `
-  --hidden-import chromadb `
   --hidden-import fastapi `
   --hidden-import structlog `
+  --collect-all chromadb `
+  --collect-all sentence_transformers `
   --collect-submodules api `
   --collect-submodules ingestion `
   --collect-submodules retrieval `

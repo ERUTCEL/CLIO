@@ -11,6 +11,12 @@ _MODEL_NAME = os.getenv("EMBEDDER_MODEL", "BAAI/bge-m3")
 _IS_PACKAGED = getattr(sys, "frozen", False)
 
 
+def _best_device() -> str:
+    # Always CPU: other processes (e.g. Ollama) consume GPU memory invisibly to
+    # PyTorch's MPS tracker, so any free-memory heuristic will OOM mid-batch.
+    return "cpu"
+
+
 class Embedder:
     """Wraps BGE-M3 (primary) with sentence-transformers fallback."""
 
@@ -28,16 +34,18 @@ class Embedder:
                 raise ImportError("skipped in packaged app")
             from FlagEmbedding import BGEM3FlagModel
 
-            self._model = BGEM3FlagModel(self.model_name, use_fp16=True)
+            device = _best_device()
+            self._model = BGEM3FlagModel(self.model_name, use_fp16=(device != "cpu"), device=device)
             self._backend = "FlagEmbedding"
-            log.info("embedder_loaded", backend="FlagEmbedding", model=self.model_name)
+            log.info("embedder_loaded", backend="FlagEmbedding", model=self.model_name, device=device)
         except ImportError:
             try:
                 from sentence_transformers import SentenceTransformer
 
-                self._model = SentenceTransformer(self.model_name)
+                device = _best_device()
+                self._model = SentenceTransformer(self.model_name, device=device)
                 self._backend = "sentence-transformers"
-                log.info("embedder_loaded", backend="sentence-transformers", model=self.model_name)
+                log.info("embedder_loaded", backend="sentence-transformers", model=self.model_name, device=device)
             except ImportError as exc:
                 raise RuntimeError(
                     "No embedding backend found. Install FlagEmbedding or sentence-transformers."

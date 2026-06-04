@@ -49,8 +49,8 @@ class VectorStore:
             docs.append(text)
             metas.append(_meta_to_dict(meta))
 
-        col.add(ids=ids, documents=docs, embeddings=embeddings, metadatas=metas)
-        log.info("vector_store_added", count=len(ids))
+        col.upsert(ids=ids, documents=docs, embeddings=embeddings, metadatas=metas)
+        log.info("vector_store_upserted", count=len(ids))
 
     def query(
         self,

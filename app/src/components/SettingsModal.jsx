@@ -30,13 +30,13 @@ const PROVIDERS = {
     defaultModel: 'llama-3.3-70b-versatile',
     showBaseUrl: false,
   },
-  deepseek: {
-    label: 'DeepSeek',
+  gemini: {
+    label: 'Google Gemini',
     keyLabel: 'API Key',
-    keyPlaceholder: 'sk-...',
+    keyPlaceholder: 'AIza...',
     keyEnv: 'OPENAI_API_KEY',
-    models: ['deepseek-chat', 'deepseek-reasoner'],
-    defaultModel: 'deepseek-chat',
+    models: ['gemini-2.0-flash', 'gemini-2.5-pro', 'gemini-1.5-pro'],
+    defaultModel: 'gemini-2.0-flash',
     showBaseUrl: false,
   },
   ollama: {

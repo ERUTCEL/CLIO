@@ -718,6 +718,16 @@ export default function Chat({ backend }) {
                 }
                 return next
               }, targetSessionId)
+            } else if (chunk.type === 'error') {
+              flushPendingText()
+              updateActiveMessages(prev => {
+                const next = [...prev]
+                next[next.length - 1] = {
+                  role: 'error',
+                  content: chunk.answer || 'AI 응답 오류가 발생했습니다.',
+                }
+                return next
+              }, targetSessionId)
             }
           } catch {
             // Ignore malformed streaming chunks.

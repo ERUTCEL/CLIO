@@ -90,10 +90,10 @@ PROVIDER_PRESETS: dict[str, dict] = {
         "models": ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768"],
         "default_model": "llama-3.3-70b-versatile",
     },
-    "deepseek": {
-        "base_url": "https://api.deepseek.com",
-        "models": ["deepseek-chat", "deepseek-reasoner"],
-        "default_model": "deepseek-chat",
+    "gemini": {
+        "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
+        "models": ["gemini-2.0-flash", "gemini-2.5-pro", "gemini-1.5-pro"],
+        "default_model": "gemini-2.0-flash",
     },
     "ollama": {
         "base_url": "http://localhost:11434/v1",
@@ -110,8 +110,19 @@ def build_provider(
     api_key: str | None = None,
     base_url: str | None = None,
 ) -> BaseLLMProvider:
-    provider = provider or os.getenv("CLIO_PROVIDER", "anthropic")
-    model    = model    or os.getenv("CLIO_MODEL", "")
+    model = model or os.getenv("CLIO_MODEL", "")
+
+    # Default provider selection:
+    # 1. Explicit CLIO_PROVIDER env var wins
+    # 2. If ANTHROPIC_API_KEY is set → anthropic
+    # 3. Otherwise → ollama (local-first: no API key required)
+    explicit = provider or os.getenv("CLIO_PROVIDER", "")
+    if explicit:
+        provider = explicit
+    elif api_key or os.getenv("ANTHROPIC_API_KEY", ""):
+        provider = "anthropic"
+    else:
+        provider = "ollama"
 
     if provider == "anthropic":
         key = api_key or os.getenv("ANTHROPIC_API_KEY", "")

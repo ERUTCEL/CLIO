@@ -91,17 +91,23 @@ function startBackend() {
   const settings = loadSettings()
   backendProcess = spawn(command, args, {
     cwd,
-    env: {
-      ...process.env,
-      CLIO_PORT: '8001',
-      CLIO_DATA_DIR: app.getPath('userData'),
-      ...(settings.CLIO_PROVIDER     && { CLIO_PROVIDER:     settings.CLIO_PROVIDER }),
-      ...(settings.CLIO_MODEL        && { CLIO_MODEL:        settings.CLIO_MODEL }),
-      ...(settings.ANTHROPIC_API_KEY && { ANTHROPIC_API_KEY: settings.ANTHROPIC_API_KEY }),
-      ...(settings.OPENAI_API_KEY    && { OPENAI_API_KEY:    settings.OPENAI_API_KEY }),
-      ...(settings.OPENAI_BASE_URL   && { OPENAI_BASE_URL:   settings.OPENAI_BASE_URL }),
-      ...(settings.NOTION_TOKEN      && { NOTION_TOKEN:      settings.NOTION_TOKEN }),
-    },
+    env: (() => {
+      // PyInstaller bundles its own Python; inherited PYTHONHOME/PYTHONPATH
+      // from the shell or Electron process confuse the embedded interpreter.
+      const e = { ...process.env }
+      delete e.PYTHONHOME
+      delete e.PYTHONPATH
+      delete e.PYTHONSTARTUP
+      e.CLIO_PORT = '8001'
+      e.CLIO_DATA_DIR = app.getPath('userData')
+      if (settings.CLIO_PROVIDER)     e.CLIO_PROVIDER     = settings.CLIO_PROVIDER
+      if (settings.CLIO_MODEL)        e.CLIO_MODEL        = settings.CLIO_MODEL
+      if (settings.ANTHROPIC_API_KEY) e.ANTHROPIC_API_KEY = settings.ANTHROPIC_API_KEY
+      if (settings.OPENAI_API_KEY)    e.OPENAI_API_KEY    = settings.OPENAI_API_KEY
+      if (settings.OPENAI_BASE_URL)   e.OPENAI_BASE_URL   = settings.OPENAI_BASE_URL
+      if (settings.NOTION_TOKEN)      e.NOTION_TOKEN      = settings.NOTION_TOKEN
+      return e
+    })(),
     stdio: ['ignore', 'pipe', 'pipe'],
   })
 
