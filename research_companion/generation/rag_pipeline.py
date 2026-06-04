@@ -1,20 +1,18 @@
-import asyncio
 import json
 import os
 import re
 from typing import AsyncGenerator
 
-import anthropic
 import structlog
 
 from generation.citation_formatter import compute_confidence, format_citations
 from generation.prompt_builder import build_messages
+from generation.providers import BaseLLMProvider, build_provider
 from retrieval.hybrid_search import HybridSearch, SearchFilters
 from retrieval.reranker import Reranker
 
 log = structlog.get_logger()
 
-_MODEL = "claude-sonnet-4-6"
 _MAX_TOKENS = 2048
 
 
@@ -84,13 +82,11 @@ class RAGPipeline:
         self,
         search: HybridSearch,
         reranker: Reranker | None = None,
-        anthropic_api_key: str | None = None,
+        provider: BaseLLMProvider | None = None,
     ) -> None:
         self.search = search
         self.reranker = reranker
-        _key = anthropic_api_key or os.getenv("ANTHROPIC_API_KEY")
-        self._client = anthropic.Anthropic(api_key=_key)
-        self._async_client = anthropic.AsyncAnthropic(api_key=_key)
+        self._provider = provider or build_provider()
 
     def answer(
         self,
@@ -121,17 +117,13 @@ class RAGPipeline:
 
         # 4. Generate
         system, messages = build_messages(query, results, conversation_history)
-        log.info("rag_calling_llm", query=query[:80], sources=len(results), model=_MODEL)
+        log.info("rag_calling_llm", query=query[:80], sources=len(results),
+                 provider=type(self._provider).__name__, model=getattr(self._provider, 'model', '?'))
 
-        response = self._client.messages.create(
-            model=_MODEL,
-            max_tokens=_MAX_TOKENS,
-            system=system,
-            messages=messages,
-        )
+        raw_text = self._provider.complete(system, messages, _MAX_TOKENS)
 
         try:
-            parsed = parse_llm_response(response.content[0].text)
+            parsed = parse_llm_response(raw_text)
             return {
                 "answer": parsed["answer"],
                 "citations": _enriched_citations(results, parsed.get("citations", [])),
@@ -140,7 +132,7 @@ class RAGPipeline:
         except (json.JSONDecodeError, KeyError) as exc:
             log.warning("llm_response_parse_failed", error=str(exc))
             return {
-                "answer": response.content[0].text,
+                "answer": raw_text,
                 "citations": _enriched_citations(results),
                 "confidence": confidence,
             }
@@ -164,59 +156,52 @@ class RAGPipeline:
         yield {"type": "sources", "sources": _source_preview(results)}
 
         system, messages = build_messages(query, results, conversation_history)
-        log.info("rag_streaming_llm", query=query[:80], sources=len(results), model=_MODEL)
+        log.info("rag_streaming_llm", query=query[:80], sources=len(results),
+                 provider=type(self._provider).__name__, model=getattr(self._provider, 'model', '?'))
 
         full_text = ""
-        # State machine: extract only the "answer" field text as it streams
         _PREFIX = '"answer": "'
         _buf = ""
         _in_answer = False
         _escaped = False
         _answer_done = False
 
-        async with self._async_client.messages.stream(
-            model=_MODEL,
-            max_tokens=_MAX_TOKENS,
-            system=system,
-            messages=messages,
-        ) as stream:
-            async for chunk in stream.text_stream:
-                full_text += chunk
+        async for chunk in self._provider.stream_text(system, messages, _MAX_TOKENS):
+            full_text += chunk
 
-                if _answer_done:
+            if _answer_done:
+                continue
+
+            if not _in_answer:
+                _buf += chunk
+                idx = _buf.find(_PREFIX)
+                if idx != -1:
+                    _in_answer = True
+                    _buf = _buf[idx + len(_PREFIX):]
+                    chunk = _buf
+                    _buf = ""
+                else:
                     continue
 
-                if not _in_answer:
-                    _buf += chunk
-                    idx = _buf.find(_PREFIX)
-                    if idx != -1:
-                        _in_answer = True
-                        _buf = _buf[idx + len(_PREFIX):]
-                        chunk = _buf
-                        _buf = ""
-                    else:
-                        continue
+            out = []
+            for ch in chunk:
+                if _escaped:
+                    if ch == 'n':    out.append('\n')
+                    elif ch == 't':  out.append('\t')
+                    elif ch == '"':  out.append('"')
+                    elif ch == '\\': out.append('\\')
+                    else:            out.append(ch)
+                    _escaped = False
+                elif ch == '\\':
+                    _escaped = True
+                elif ch == '"':
+                    _answer_done = True
+                    break
+                else:
+                    out.append(ch)
 
-                # extract printable chars from the "answer" JSON string
-                out = []
-                for ch in chunk:
-                    if _escaped:
-                        if ch == 'n':   out.append('\n')
-                        elif ch == 't': out.append('\t')
-                        elif ch == '"': out.append('"')
-                        elif ch == '\\': out.append('\\')
-                        else:           out.append(ch)
-                        _escaped = False
-                    elif ch == '\\':
-                        _escaped = True
-                    elif ch == '"':
-                        _answer_done = True
-                        break
-                    else:
-                        out.append(ch)
-
-                if out:
-                    yield {"type": "token", "text": "".join(out)}
+            if out:
+                yield {"type": "token", "text": "".join(out)}
 
         try:
             parsed = parse_llm_response(full_text)

@@ -196,6 +196,23 @@ function CitationPanel({ confidence, citations = [], activeIndex, onCitationClic
   )
 }
 
+function SidebarSection({ label, defaultOpen = true, children }) {
+  const [open, setOpen] = useState(defaultOpen)
+  return (
+    <div>
+      <button type="button" onClick={() => setOpen(v => !v)}
+        className="flex w-full items-center gap-1.5 px-2 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#94A3B8] hover:text-[#64748B] transition-colors">
+        <svg className={`h-3 w-3 shrink-0 transition-transform duration-150 ${open ? 'rotate-90' : ''}`}
+          fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+        </svg>
+        {label}
+      </button>
+      {open && children}
+    </div>
+  )
+}
+
 function SourceSidebar({ sources = [], sessions = [], activeSessionId, onSelectSession, onNewSession }) {
   return (
     <aside className="hidden w-72 shrink-0 border-r border-[#E2E8F0] bg-white lg:flex lg:flex-col">
@@ -209,109 +226,152 @@ function SourceSidebar({ sources = [], sessions = [], activeSessionId, onSelectS
           새 대화
         </button>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto p-2">
-        <div className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#94A3B8]">Current evidence</div>
-        {(sources.length ? sources : [{ index: '-', title: '아직 선택된 근거가 없습니다.' }]).slice(0, 8).map(source => (
-          <div key={`${source.index}-${source.title}`}
-            className="flex items-start gap-2 rounded-md px-2 py-2 text-xs text-[#475569] transition-colors hover:bg-[#F1F5F9]">
-            <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border border-[#E2E8F0] bg-[#F8FAFC] text-[10px] font-semibold text-[#4F46E5]">PDF</span>
-            <span className="min-w-0 flex-1 truncate">{source.title}</span>
-          </div>
-        ))}
-        <div className="mt-4 px-2 pb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#94A3B8]">Conversations</div>
-        {sessions.slice(0, 8).map(session => (
-          <button key={session.id} type="button" onClick={() => onSelectSession(session.id)}
-            className={`flex w-full items-center rounded-md px-2 py-2 text-left text-xs transition-colors ${
-              session.id === activeSessionId ? 'bg-[#EEF2FF] text-[#4F46E5]' : 'text-[#475569] hover:bg-[#F1F5F9]'
-            }`}>
-            <span className="truncate">{session.title || '새 대화'}</span>
-          </button>
-        ))}
+      <div className="min-h-0 flex-1 overflow-y-auto p-2 space-y-2">
+        <SidebarSection label="Current evidence">
+          {(sources.length ? sources : [{ index: '-', title: '아직 선택된 근거가 없습니다.' }]).slice(0, 8).map(source => (
+            <div key={`${source.index}-${source.title}`}
+              className="flex items-start gap-2 rounded-md px-2 py-2 text-xs text-[#475569] transition-colors hover:bg-[#F1F5F9]">
+              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border border-[#E2E8F0] bg-[#F8FAFC] text-[10px] font-semibold text-[#4F46E5]">PDF</span>
+              <span className="min-w-0 flex-1 truncate">{source.title}</span>
+            </div>
+          ))}
+        </SidebarSection>
+        <SidebarSection label="Conversations">
+          {sessions.slice(0, 8).map(session => (
+            <button key={session.id} type="button" onClick={() => onSelectSession(session.id)}
+              className={`flex w-full items-center rounded-md px-2 py-2 text-left text-xs transition-colors ${
+                session.id === activeSessionId ? 'bg-[#EEF2FF] text-[#4F46E5]' : 'text-[#475569] hover:bg-[#F1F5F9]'
+              }`}>
+              <span className="truncate">{session.title || '새 대화'}</span>
+            </button>
+          ))}
+        </SidebarSection>
       </div>
     </aside>
   )
 }
 
 function SourceViewer({ backend, open, activeCitation, citations = [], sources = [], onSelectCitation, onToggle }) {
-  if (!open) {
-    return (
-      <button type="button" onClick={onToggle}
-        className="hidden border-l border-[#E2E8F0] bg-white px-2 text-xs text-[#64748B] transition-colors hover:bg-[#F8FAFC] xl:block"
-        title="Show sources">
-        &lt;
-      </button>
-    )
-  }
   const shown = activeCitation || citations[0] || sources[0]
-  const pdfUrl = shown?.source
-    ? `${backend}/sources/pdf?path=${encodeURIComponent(shown.source)}${shown.page ? `#page=${shown.page}` : ''}`
+  const fetchUrl = shown?.source
+    ? `${backend}/sources/pdf?path=${encodeURIComponent(shown.source)}`
     : ''
+  const [blobUrl, setBlobUrl] = useState('')
+  const [pdfLoading, setPdfLoading] = useState(false)
+  const [pdfError, setPdfError] = useState('')
+
+  useEffect(() => {
+    if (!fetchUrl) { setBlobUrl(''); return }
+    let current = true
+    setPdfLoading(true)
+    setPdfError('')
+    fetch(fetchUrl)
+      .then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`)
+        return r.blob()
+      })
+      .then(blob => {
+        if (!current) return
+        const url = URL.createObjectURL(blob)
+        setBlobUrl(prev => { if (prev) URL.revokeObjectURL(prev); return url })
+        setPdfLoading(false)
+      })
+      .catch(e => {
+        if (!current) return
+        setPdfError(e.message)
+        setPdfLoading(false)
+      })
+    return () => { current = false }
+  }, [fetchUrl])
+
+  const iframeSrc = blobUrl
+    ? blobUrl + (shown?.page ? `#page=${shown.page}` : '')
+    : ''
+
   return (
-    <aside className="hidden w-80 shrink-0 border-l border-[#E2E8F0] bg-white xl:flex xl:flex-col">
-      <div className="flex items-center justify-between border-b border-[#E2E8F0] px-4 py-3">
-        <div>
-          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#64748B]">Source</div>
-          <div className="mt-1 text-sm font-semibold text-[#1E293B]">PDF evidence</div>
-        </div>
-        <button type="button" onClick={onToggle}
-          className="rounded-md border border-[#E2E8F0] px-2 py-1 text-xs text-[#64748B] hover:bg-[#F1F5F9]"
-          title="Hide sources">
-          &gt;
-        </button>
-      </div>
-      <div className="min-h-0 flex-1 overflow-y-auto p-4">
-        {!shown ? (
-          <div className="rounded-md border border-dashed border-[#CBD5E1] bg-[#F8FAFC] p-4 text-sm leading-6 text-[#64748B]">
-            답변의 인용 배지 [1] 또는 아래 citation 항목을 클릭하면 이곳에 근거가 표시됩니다.
-          </div>
-        ) : (
-          <div className="space-y-3">
-            <div className="rounded-md border border-[#E2E8F0] bg-[#F8FAFC] p-3">
-              <div className="mb-2 inline-flex rounded border border-[#C7D2FE] bg-[#EEF2FF] px-2 py-1 text-xs font-semibold text-[#4F46E5]">
-                [{shown.index}]
-              </div>
-              <h3 className="text-sm font-semibold leading-6 text-[#1E293B]">{shown.title || '(제목 없음)'}</h3>
-              <p className="mt-1 text-xs text-[#64748B]">
-                {[shown.author, shown.year, shown.page ? `p.${shown.page}` : ''].filter(Boolean).join(' · ')}
-              </p>
-            </div>
-            <div className="animate-[pulse_900ms_ease-out_1] rounded-md border border-[#FACC15] bg-[#FEF08A]/60 p-3 text-sm leading-7 text-[#1E293B]">
-              {shown.caption || shown.figure_type || '선택한 citation의 원문 PDF 위치/텍스트 미리보기가 여기에 표시됩니다.'}
-            </div>
-            {pdfUrl ? (
-              <div className="overflow-hidden rounded-md border border-[#E2E8F0] bg-[#F8FAFC]">
-                <div className="flex items-center justify-between border-b border-[#E2E8F0] px-3 py-2 text-xs text-[#64748B]">
-                  <span>PDF page {shown.page || 1}</span>
-                  <a href={pdfUrl} target="_blank" rel="noreferrer" className="text-[#4F46E5] hover:underline">
-                    새 창
-                  </a>
-                </div>
-                <iframe
-                  title={`PDF source ${shown.index}`}
-                  src={pdfUrl}
-                  className="h-[26rem] w-full bg-white"
-                />
-              </div>
-            ) : (
-              <div className="rounded-md border border-dashed border-[#CBD5E1] bg-[#F8FAFC] p-3 text-xs leading-6 text-[#64748B]">
-                이 citation에는 PDF 파일 경로가 없습니다. 새로 인덱싱한 PDF부터 페이지 뷰어가 활성화됩니다.
-              </div>
-            )}
-            <div className="space-y-2">
-              {citations.map(citation => (
-                <button key={citation.index} type="button" onClick={() => onSelectCitation(citation)}
-                  className={`w-full rounded-md border px-3 py-2 text-left text-xs transition-colors ${
-                    Number(citation.index) === Number(shown.index)
-                      ? 'border-[#4F46E5] bg-[#EEF2FF] text-[#4F46E5]'
-                      : 'border-[#E2E8F0] bg-white text-[#475569] hover:bg-[#F1F5F9]'
-                  }`}>
-                  [{citation.index}] {citation.title || '(제목 없음)'}
-                </button>
-              ))}
-            </div>
+    <aside className={`flex shrink-0 flex-col border-l border-[#E2E8F0] bg-white transition-[width] duration-200 overflow-hidden ${open ? 'w-80' : 'w-9'}`}>
+      <div className="flex shrink-0 items-center justify-between border-b border-[#E2E8F0] px-2 py-3">
+        {open && (
+          <div className="min-w-0 flex-1 pl-2">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#64748B] whitespace-nowrap">Source</div>
+            <div className="mt-1 text-sm font-semibold text-[#1E293B] whitespace-nowrap">PDF evidence</div>
           </div>
         )}
+        <button type="button" onClick={onToggle}
+          className="shrink-0 rounded-md border border-[#E2E8F0] p-1.5 text-[#64748B] hover:bg-[#F1F5F9] transition-colors"
+          title={open ? '패널 닫기' : '소스 패널 열기'}>
+          <svg className={`h-3.5 w-3.5 transition-transform duration-200 ${open ? '' : 'rotate-180'}`}
+            fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
       </div>
+      {open && (
+        <div className="min-h-0 flex-1 overflow-y-auto p-4">
+          {!shown ? (
+            <div className="rounded-md border border-dashed border-[#CBD5E1] bg-[#F8FAFC] p-4 text-sm leading-6 text-[#64748B]">
+              답변의 인용 배지 [1] 또는 아래 citation 항목을 클릭하면 이곳에 근거가 표시됩니다.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="rounded-md border border-[#E2E8F0] bg-[#F8FAFC] p-3">
+                <div className="mb-2 inline-flex rounded border border-[#C7D2FE] bg-[#EEF2FF] px-2 py-1 text-xs font-semibold text-[#4F46E5]">
+                  [{shown.index}]
+                </div>
+                <h3 className="text-sm font-semibold leading-6 text-[#1E293B]">{shown.title || '(제목 없음)'}</h3>
+                <p className="mt-1 text-xs text-[#64748B]">
+                  {[shown.author, shown.year, shown.page ? `p.${shown.page}` : ''].filter(Boolean).join(' · ')}
+                </p>
+              </div>
+              <div className="animate-[pulse_900ms_ease-out_1] rounded-md border border-[#FACC15] bg-[#FEF08A]/60 p-3 text-sm leading-7 text-[#1E293B]">
+                {shown.caption || shown.figure_type || '선택한 citation의 원문 PDF 위치/텍스트 미리보기가 여기에 표시됩니다.'}
+              </div>
+              {fetchUrl ? (
+                <div className="overflow-hidden rounded-md border border-[#E2E8F0] bg-[#F8FAFC]">
+                  <div className="flex items-center justify-between border-b border-[#E2E8F0] px-3 py-2 text-xs text-[#64748B]">
+                    <span>PDF page {shown.page || 1}</span>
+                    <a href={fetchUrl} target="_blank" rel="noreferrer" className="text-[#4F46E5] hover:underline">
+                      새 창
+                    </a>
+                  </div>
+                  {pdfLoading && (
+                    <div className="flex h-20 items-center justify-center text-xs text-[#94A3B8]">
+                      PDF 불러오는 중...
+                    </div>
+                  )}
+                  {pdfError && (
+                    <div className="p-3 text-xs text-red-500">{pdfError}</div>
+                  )}
+                  {iframeSrc && !pdfLoading && !pdfError && (
+                    <iframe
+                      key={iframeSrc}
+                      title={`PDF source ${shown.index}`}
+                      src={iframeSrc}
+                      className="h-[26rem] w-full bg-white"
+                    />
+                  )}
+                </div>
+              ) : (
+                <div className="rounded-md border border-dashed border-[#CBD5E1] bg-[#F8FAFC] p-3 text-xs leading-6 text-[#64748B]">
+                  이 citation에는 PDF 파일 경로가 없습니다. 새로 인덱싱한 PDF부터 페이지 뷰어가 활성화됩니다.
+                </div>
+              )}
+              <div className="space-y-2">
+                {citations.map(citation => (
+                  <button key={citation.index} type="button" onClick={() => onSelectCitation(citation)}
+                    className={`w-full rounded-md border px-3 py-2 text-left text-xs transition-colors ${
+                      Number(citation.index) === Number(shown.index)
+                        ? 'border-[#4F46E5] bg-[#EEF2FF] text-[#4F46E5]'
+                        : 'border-[#E2E8F0] bg-white text-[#475569] hover:bg-[#F1F5F9]'
+                    }`}>
+                    [{citation.index}] {citation.title || '(제목 없음)'}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </aside>
   )
 }
@@ -730,10 +790,6 @@ export default function Chat({ backend }) {
             <div className="w-72">
               <LocalAISetup backend={backend} />
             </div>
-            <button type="button" onClick={() => setSourcePanelOpen(v => !v)}
-              className="rounded-md border border-[#E2E8F0] bg-[#F8FAFC] px-2 py-1 text-xs font-medium text-[#475569] hover:bg-[#F1F5F9]">
-              {sourcePanelOpen ? 'Hide sources >' : '< Show sources'}
-            </button>
             <span className="rounded-md border border-[#BBF7D0] bg-[#F0FDF4] px-2 py-1 text-xs font-medium text-[#059669]">Library-grounded</span>
             <span className="rounded-md border border-[#C7D2FE] bg-[#EEF2FF] px-2 py-1 text-xs font-medium text-[#4F46E5]">Visual evidence ready</span>
           </div>

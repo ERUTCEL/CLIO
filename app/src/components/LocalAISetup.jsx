@@ -132,6 +132,17 @@ export default function LocalAISetup({ backend }) {
               새로고침
             </button>
           </div>
+          {message && (
+            <div className={`mb-3 rounded-md px-3 py-2 text-xs leading-5 ${
+              pullJob?.status === 'failed' || message.includes('실행 중이 아닙니다') || message.includes('시작하지 못했습니다') || message.includes('끊겼습니다')
+                ? 'border border-[#FDE68A] bg-[#FEFCE8] text-[#854D0E]'
+                : pullJob?.status === 'done' || message.includes('완료')
+                  ? 'border border-[#A7F3D0] bg-[#ECFDF5] text-[#065F46]'
+                  : 'border border-[#C7D2FE] bg-[#EEF2FF] text-[#3730A3]'
+            }`}>
+              {message}
+            </div>
+          )}
           <div className="grid grid-cols-3 gap-2">
             <div className="rounded-md border border-[#E2E8F0] bg-[#F8FAFC] p-3">
               <div className="text-[10px] uppercase tracking-[0.12em] text-[#94A3B8]">Required</div>
@@ -220,11 +231,15 @@ export default function LocalAISetup({ backend }) {
                     <div className="mt-3">
                       <div className="mb-1 flex justify-between text-[11px] text-[#64748B]">
                         <span>{pullJob.ollama_status || pullJob.status || 'downloading'}</span>
-                        <span>{pullJob.percent != null ? `${pullJob.percent}%` : '진행 중'}</span>
+                        <span>{pullJob.percent != null ? `${pullJob.percent}%` : '진행 중...'}</span>
                       </div>
                       <div className="h-1.5 overflow-hidden rounded-full bg-[#E2E8F0]">
-                        <div className="h-full rounded-full bg-[#4F46E5] transition-all"
-                          style={{ width: pullJob.percent != null ? `${Math.max(3, pullJob.percent)}%` : '12%' }} />
+                        {pullJob.percent != null ? (
+                          <div className="h-full rounded-full bg-[#4F46E5] transition-all"
+                            style={{ width: `${Math.max(3, pullJob.percent)}%` }} />
+                        ) : (
+                          <div className="h-full w-full rounded-full bg-gradient-to-r from-[#E2E8F0] via-[#4F46E5] to-[#E2E8F0] animate-[shimmer_1.5s_ease-in-out_infinite] bg-[length:200%_100%]" />
+                        )}
                       </div>
                     </div>
                   )}
@@ -235,14 +250,19 @@ export default function LocalAISetup({ backend }) {
                   )}
                   <button onClick={() => pull(modelName)}
                     disabled={installed || !!pulling || !serverReady}
-                    className="mt-3 flex h-8 w-full items-center justify-center rounded-md bg-[#4F46E5] px-3 text-xs font-medium text-white transition-colors hover:bg-[#4338CA] disabled:bg-[#CBD5E1] disabled:text-[#64748B]">
+                    className="mt-3 flex h-8 w-full items-center justify-center gap-1.5 rounded-md bg-[#4F46E5] px-3 text-xs font-medium text-white transition-colors hover:bg-[#4338CA] disabled:bg-[#CBD5E1] disabled:text-[#64748B]">
+                    {pulling === modelName && (
+                      <svg className="h-3 w-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                      </svg>
+                    )}
                     <span className="whitespace-nowrap">{buttonLabel}</span>
                   </button>
                 </div>
               )
             })}
           </div>
-          {message && <div className="mt-3 rounded-md bg-[#F8FAFC] px-3 py-2 text-[#475569]">{message}</div>}
           {!status?.installed_models?.length && (
             <div className="mt-3 text-[#64748B]">
               Ollama 앱이 설치되어 있지 않으면 먼저 Ollama가 필요합니다. 이후 모델 설치는 여기서 처리합니다.

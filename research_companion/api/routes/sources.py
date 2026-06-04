@@ -1,4 +1,5 @@
 from pathlib import Path
+from urllib.parse import quote
 
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import FileResponse
@@ -13,4 +14,9 @@ async def pdf(path: str = Query(..., min_length=1)) -> FileResponse:
         raise HTTPException(status_code=404, detail="PDF not found")
     if pdf_path.suffix.lower() != ".pdf":
         raise HTTPException(status_code=415, detail="Only PDF files can be previewed")
-    return FileResponse(str(pdf_path), media_type="application/pdf", filename=pdf_path.name)
+    encoded_name = quote(pdf_path.name, safe="")
+    return FileResponse(
+        str(pdf_path),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"inline; filename*=UTF-8''{encoded_name}"},
+    )

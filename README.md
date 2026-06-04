@@ -8,6 +8,16 @@ Local-first research decision companion for papers, notes, and project ideas.
 |----------|------|
 | macOS (Apple Silicon) | [CLIO-0.1.0-arm64.dmg](https://github.com/ERUTCEL/Research-Companion-/releases/tag/v0.1.0) |
 
+### macOS 보안 경고 우회 방법
+
+Apple 공증이 없어 처음 실행 시 경고가 뜰 수 있습니다.
+
+1. DMG 파일을 열고 CLIO.app을 응용 프로그램 폴더로 드래그
+2. Finder에서 CLIO.app을 **우클릭 → 열기** 선택
+3. 경고창에서 **열기** 클릭
+
+이후부터는 평소처럼 실행됩니다.
+
 ## Quick Start
 
 From the repository root, run one command.
