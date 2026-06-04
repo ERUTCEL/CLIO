@@ -2,6 +2,12 @@
 
 Local-first research decision companion for papers, notes, and project ideas.
 
+## Download
+
+| Platform | Link |
+|----------|------|
+| macOS (Apple Silicon) | [CLIO-0.1.0-arm64.dmg](https://github.com/ERUTCEL/Research-Companion-/releases/tag/v0.1.0) |
+
 ## Quick Start
 
 From the repository root, run one command.
