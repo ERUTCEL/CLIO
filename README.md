@@ -12,7 +12,8 @@
 
 | 플랫폼 | 링크 |
 |--------|------|
-| macOS Apple Silicon | [CLIO-0.1.1-arm64.dmg](https://github.com/ERUTCEL/Research-Companion-/releases/tag/v0.1.1) |
+| macOS Apple Silicon | [CLIO-0.1.0-arm64.dmg](https://github.com/ERUTCEL/CLIO/releases/download/v0.1.1/CLIO-0.1.0-arm64.dmg) |
+| Windows (Portable) | [CLIO-0.1.1-Windows-Portable.zip](https://github.com/ERUTCEL/CLIO/releases/download/v0.1.1/CLIO-0.1.1-Windows-Portable.zip) |
 
 ### macOS 보안 경고 우회
 
@@ -28,6 +29,12 @@ xattr -dr com.apple.quarantine /Applications/CLIO.app
 2. Finder에서 CLIO.app **우클릭 → 열기**
 3. 경고창에서 **열기** 클릭
 
+### Windows 실행 방법
+
+ZIP 압축 해제 후 `CLIO.exe` 실행. 설치 불필요합니다.
+
+> Windows SmartScreen 경고 시 **"추가 정보" → "실행"** 클릭
+
 ## 사용법
 
 1. [Ollama](https://ollama.com) 설치 후 실행
@@ -39,9 +46,12 @@ API 키가 있다면 좌측 하단 ⚙️ 설정에서 Claude / Gemini 등으로
 
 ## 요구사항
 
-- macOS Apple Silicon (arm64)
-- RAM 16GB 이상 권장
-- [Ollama](https://ollama.com) (qwen3:8b 이상) — 없으면 API 키 필요
+| 플랫폼 | 최소 사양 |
+|--------|----------|
+| macOS | Apple Silicon (arm64), RAM 16GB 이상 |
+| Windows | Windows 10/11 (x64), RAM 16GB 이상 |
+
+[Ollama](https://ollama.com) (qwen3:8b 이상) 권장 — 없으면 API 키 필요
 
 ## 개발자용 실행
 
