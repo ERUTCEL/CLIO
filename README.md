@@ -12,7 +12,7 @@
 
 | 플랫폼 | 링크 |
 |--------|------|
-| macOS Apple Silicon | [CLIO-0.1.0-arm64.dmg](https://github.com/ERUTCEL/CLIO/releases/download/v0.1.1/CLIO-0.1.0-arm64.dmg) |
+| macOS Apple Silicon | [CLIO-0.1.1-arm64.dmg](https://github.com/ERUTCEL/CLIO/releases/download/v0.1.1/CLIO-0.1.1-arm64.dmg) |
 | Windows (Portable) | [CLIO-0.1.1-Windows-Portable.zip](https://github.com/ERUTCEL/CLIO/releases/download/v0.1.1/CLIO-0.1.1-Windows-Portable.zip) |
 
 ### macOS 보안 경고 우회
