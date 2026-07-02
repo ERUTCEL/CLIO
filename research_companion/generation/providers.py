@@ -174,6 +174,38 @@ def _first_ollama_model() -> str:
     return ""
 
 
+def is_local_provider(provider: BaseLLMProvider) -> bool:
+    """Ollama(로컬 서버) 기반 provider인지 판별."""
+    client = getattr(provider, "_client", None)
+    base_url = str(getattr(client, "base_url", "") or "")
+    return "11434" in base_url or "localhost" in base_url or "127.0.0.1" in base_url
+
+
+def build_fallback_provider(primary: BaseLLMProvider) -> BaseLLMProvider | None:
+    """로컬 provider가 응답하지 않을 때 사용할 클라우드 폴백.
+
+    등록된 API 키가 있을 때만 생성하며, 클라우드 provider가 primary인 경우에는
+    (과금이 이중으로 발생할 수 있으므로) 폴백을 만들지 않는다.
+    """
+    if not is_local_provider(primary):
+        return None
+    if os.getenv("ANTHROPIC_API_KEY", ""):
+        return AnthropicProvider(
+            api_key=os.getenv("ANTHROPIC_API_KEY", ""),
+            model=PROVIDER_PRESETS["anthropic"]["default_model"],
+        )
+    if os.getenv("OPENAI_API_KEY", ""):
+        base_url = os.getenv("OPENAI_BASE_URL") or None
+        inferred = _infer_openai_compatible_provider(base_url)
+        preset = PROVIDER_PRESETS.get(inferred, PROVIDER_PRESETS["openai"])
+        return OpenAICompatibleProvider(
+            api_key=os.getenv("OPENAI_API_KEY", ""),
+            model=preset["default_model"],
+            base_url=base_url or preset.get("base_url"),
+        )
+    return None
+
+
 def _infer_openai_compatible_provider(base_url: str | None) -> str:
     url = (base_url or "").lower()
     if "groq.com" in url:

@@ -12,12 +12,20 @@ function normalizeModelName(model) {
   return model === 'qwen3:7b' ? 'qwen3:8b' : model
 }
 
+// recommended 배열 순서(Light/Default/Deep)별 최소 RAM(GB)
+const MODEL_MIN_RAM_GB = [8, 16, 16]
+
 export default function LocalAISetup({ backend }) {
   const [open, setOpen] = useState(false)
   const [status, setStatus] = useState(null)
   const [message, setMessage] = useState('')
   const [pulling, setPulling] = useState('')
   const [pullJob, setPullJob] = useState(null)
+  const [sysInfo, setSysInfo] = useState(null)
+
+  useEffect(() => {
+    window.api?.getSystemInfo?.().then(setSysInfo).catch(() => {})
+  }, [])
 
   async function refresh() {
     try {
@@ -143,6 +151,14 @@ export default function LocalAISetup({ backend }) {
               {message}
             </div>
           )}
+          {sysInfo != null && sysInfo.totalMemGB < 16 && (
+            <div className="mb-3 rounded-md border border-[#FECACA] bg-[#FEF2F2] px-3 py-2 leading-6 text-[#991B1B]">
+              <span className="font-semibold">이 기기의 RAM은 {sysInfo.totalMemGB}GB입니다.</span>{' '}
+              {sysInfo.totalMemGB < 12
+                ? '로컬 모델을 원활히 돌리기 어렵습니다. 좌측 하단 ⚙️ 설정에서 클라우드 API 키(Claude/Gemini 등)를 등록해 사용하는 것을 권장합니다.'
+                : 'Light 모델만 권장합니다. Default/Deep 모델은 느리거나 실패할 수 있으니, 필요하면 클라우드 API 키 사용을 고려하세요.'}
+            </div>
+          )}
           <div className="grid grid-cols-3 gap-2">
             <div className="rounded-md border border-[#E2E8F0] bg-[#F8FAFC] p-3">
               <div className="text-[10px] uppercase tracking-[0.12em] text-[#94A3B8]">Required</div>
@@ -198,7 +214,12 @@ export default function LocalAISetup({ backend }) {
               const modelName = normalizeModelName(item.name)
               const installed = status?.installed_models?.includes(modelName)
               const interrupted = pullJob?.status === 'failed' && pullJob?.model === modelName
-              const buttonLabel = installed ? '설치됨' : pulling === modelName ? '설치 중' : interrupted ? '다시 시도' : serverReady ? '설치' : '대기'
+              const underSpec = sysInfo != null && sysInfo.totalMemGB < MODEL_MIN_RAM_GB[index]
+              const buttonLabel = installed ? '설치됨'
+                : pulling === modelName ? '설치 중'
+                : underSpec ? `RAM ${MODEL_MIN_RAM_GB[index]}GB 이상 필요`
+                : interrupted ? '다시 시도'
+                : serverReady ? '설치' : '대기'
               return (
                 <div key={modelName} className="rounded-md border border-[#E2E8F0] bg-white p-3 shadow-sm">
                   <div className="flex min-w-0 items-start justify-between gap-2">
@@ -249,7 +270,7 @@ export default function LocalAISetup({ backend }) {
                     </div>
                   )}
                   <button onClick={() => pull(modelName)}
-                    disabled={installed || !!pulling || !serverReady}
+                    disabled={installed || !!pulling || !serverReady || underSpec}
                     className="mt-3 flex h-8 w-full items-center justify-center gap-1.5 rounded-md bg-[#4F46E5] px-3 text-xs font-medium text-white transition-colors hover:bg-[#4338CA] disabled:bg-[#CBD5E1] disabled:text-[#64748B]">
                     {pulling === modelName && (
                       <svg className="h-3 w-3 animate-spin" fill="none" viewBox="0 0 24 24">

@@ -39,8 +39,17 @@ async def chat_stream(req: ChatRequest) -> StreamingResponse:
     history = [{"role": m.role, "content": m.content} for m in req.conversation_history]
 
     async def generate():
-        async for chunk in pipeline.answer_stream(req.query, filters=filters, conversation_history=history):
-            yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n"
+        try:
+            async for chunk in pipeline.answer_stream(req.query, filters=filters, conversation_history=history):
+                yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n"
+        except Exception as exc:  # SSE가 에러 이벤트 없이 끊기지 않도록 하는 최종 방어선
+            payload = {
+                "type": "error",
+                "answer": f"응답 생성 중 오류가 발생했습니다: {exc}",
+                "citations": [],
+                "confidence": "no_source",
+            }
+            yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
 
     return StreamingResponse(generate(), media_type="text/event-stream")
 

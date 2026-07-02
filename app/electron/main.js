@@ -1,15 +1,70 @@
 import { app, BrowserWindow, ipcMain, dialog, shell, safeStorage } from 'electron'
 import { spawn } from 'child_process'
 import path from 'path'
+import os from 'os'
 import { fileURLToPath } from 'url'
 import fs from 'fs'
+import log from 'electron-log/main'
+import electronUpdater from 'electron-updater'
+import { initTelemetry } from './telemetry.js'
 
+const { autoUpdater } = electronUpdater
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const isDev = !app.isPackaged
+
+// ── Logging / crash capture ─────────────────────────────────────────────────
+// 파일 로그: macOS ~/Library/Logs/CLIO, Windows %USERPROFILE%\AppData\Roaming\CLIO\logs
+log.initialize()
+log.transports.file.level = 'info'
+log.transports.file.maxSize = 5 * 1024 * 1024
+log.errorHandler.startCatching({
+  showDialog: false,
+  onError: ({ error }) => log.error('[uncaught]', error),
+})
+Object.assign(console, log.functions) // 기존 console.* 호출도 파일로 남김
+initTelemetry(log)
 
 let mainWindow
 let backendProcess
 let backendStatus = { state: 'idle', detail: 'Backend has not started.' }
+
+// ── Auto update (GitHub Releases) ────────────────────────────────────────────
+
+let updateStatus = { state: 'idle', version: '', percent: 0, error: '' }
+
+function sendToWindow(channel, payload) {
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send(channel, payload)
+}
+
+function setUpdateStatus(next) {
+  updateStatus = { ...updateStatus, ...next }
+  sendToWindow('update-status', updateStatus)
+}
+
+function setupAutoUpdater() {
+  if (isDev) {
+    updateStatus = { state: 'disabled', version: '', percent: 0, error: 'dev mode' }
+    return
+  }
+  autoUpdater.logger = log
+  autoUpdater.autoDownload = true
+  autoUpdater.autoInstallOnAppQuit = true
+
+  autoUpdater.on('checking-for-update', () => setUpdateStatus({ state: 'checking', error: '' }))
+  autoUpdater.on('update-available', info => setUpdateStatus({ state: 'downloading', version: info.version }))
+  autoUpdater.on('update-not-available', () => setUpdateStatus({ state: 'idle' }))
+  autoUpdater.on('download-progress', p => setUpdateStatus({ state: 'downloading', percent: Math.round(p.percent) }))
+  autoUpdater.on('update-downloaded', info => setUpdateStatus({ state: 'downloaded', version: info.version, percent: 100 }))
+  autoUpdater.on('error', err => {
+    // 서명 안 된 macOS 빌드 등에서는 업데이트가 불가능함 — 앱 사용은 막지 않는다
+    log.warn('[updater]', err?.message)
+    setUpdateStatus({ state: 'error', error: err?.message || 'unknown' })
+  })
+
+  const check = () => autoUpdater.checkForUpdates().catch(err => log.warn('[updater] check failed:', err?.message))
+  setTimeout(check, 10_000)                  // 부팅 직후 백엔드와 경쟁하지 않도록 지연
+  setInterval(check, 4 * 60 * 60 * 1000)     // 이후 4시간마다
+}
 
 // ── Settings (encrypted via safeStorage) ────────────────────────────────────
 
@@ -84,9 +139,43 @@ function resolveProviderSettings(settings) {
 
 // ── Backend (FastAPI) ────────────────────────────────────────────────────────
 
+const BACKEND_MAX_RESTARTS = 5
+let backendStopping = false      // 의도적 종료(설정 변경/앱 종료) 시 재시작 억제
+let backendRestarts = 0
+let backendStartedAt = 0
+let backendRestartTimer = null
+
+function setBackendStatus(next) {
+  backendStatus = next
+  sendToWindow('backend-status', backendStatus)
+}
+
+function scheduleBackendRestart(exitCode) {
+  // 60초 이상 정상 동작했다면 새로운 장애로 보고 카운터 리셋
+  if (Date.now() - backendStartedAt > 60_000) backendRestarts = 0
+
+  if (backendRestarts >= BACKEND_MAX_RESTARTS) {
+    setBackendStatus({
+      state: 'failed',
+      detail: `백엔드가 반복적으로 종료되어 자동 재시작을 중단했습니다 (exit ${exitCode}). 로그를 확인해 주세요.`,
+    })
+    return
+  }
+  const delay = Math.min(1000 * 2 ** backendRestarts, 30_000)
+  backendRestarts += 1
+  log.warn(`[backend] crashed (exit ${exitCode}) — restart ${backendRestarts}/${BACKEND_MAX_RESTARTS} in ${delay}ms`)
+  setBackendStatus({
+    state: 'restarting',
+    detail: `백엔드가 예기치 않게 종료되어 재시작 중입니다 (${backendRestarts}/${BACKEND_MAX_RESTARTS})...`,
+  })
+  backendRestartTimer = setTimeout(() => { backendRestartTimer = null; startBackend() }, delay)
+}
+
 function startBackend() {
   let command, args, cwd
-  backendStatus = { state: 'starting', detail: 'Starting CLIO backend...' }
+  backendStopping = false
+  backendStartedAt = Date.now()
+  setBackendStatus({ state: 'starting', detail: 'Starting CLIO backend...' })
 
   if (isDev) {
     // Dev: use the venv uvicorn directly
@@ -106,7 +195,7 @@ function startBackend() {
     const python = pythonCandidates.find(c => fs.existsSync(c))
     if (!uvicorn && !python) {
       console.warn('[backend] virtualenv not found')
-      backendStatus = { state: 'failed', detail: 'Development virtualenv was not found.' }
+      setBackendStatus({ state: 'failed', detail: 'Development virtualenv was not found.' })
       return
     }
     command = uvicorn || python
@@ -125,7 +214,7 @@ function startBackend() {
     command = candidates.find(candidate => fs.existsSync(candidate))
     if (!command) {
       console.error('[backend] bundled binary not found:', candidates)
-      backendStatus = { state: 'failed', detail: `Bundled backend not found: ${candidates.join(', ')}` }
+      setBackendStatus({ state: 'failed', detail: `Bundled backend not found: ${candidates.join(', ')}` })
       return
     }
     args = []
@@ -168,28 +257,36 @@ function startBackend() {
 
   backendProcess.stdout.on('data', d => {
     const detail = d.toString().trim()
-    if (detail) backendStatus = { state: 'running', detail }
+    if (detail) setBackendStatus({ state: 'running', detail })
     console.log('[backend]', detail)
   })
   backendProcess.stderr.on('data', d => {
     const detail = d.toString().trim()
-    if (detail) backendStatus = { state: 'error', detail }
+    // uvicorn은 정상 액세스 로그도 stderr로 쓴다 — 상태를 'error'로 덮지 않는다
+    if (detail) setBackendStatus({ state: backendStatus.state === 'failed' ? 'failed' : 'running', detail })
     console.error('[backend]', detail)
   })
   backendProcess.on('spawn', () => {
-    backendStatus = { state: 'running', detail: `Backend process started: ${command}` }
+    setBackendStatus({ state: 'running', detail: `Backend process started: ${command}` })
   })
   backendProcess.on('error', err => {
-    backendStatus = { state: 'failed', detail: err.message }
+    setBackendStatus({ state: 'failed', detail: err.message })
     console.error('[backend] failed to start', err)
   })
   backendProcess.on('exit', code => {
-    backendStatus = { state: code === 0 ? 'stopped' : 'failed', detail: `Backend exited with code ${code}` }
+    backendProcess = null
     console.log('[backend] exited', code)
+    if (backendStopping) {
+      setBackendStatus({ state: 'stopped', detail: `Backend stopped (code ${code})` })
+      return
+    }
+    scheduleBackendRestart(code)
   })
 }
 
 function stopBackend() {
+  backendStopping = true
+  if (backendRestartTimer) { clearTimeout(backendRestartTimer); backendRestartTimer = null }
   if (backendProcess) { backendProcess.kill(); backendProcess = null }
 }
 
@@ -229,6 +326,7 @@ function createWindow() {
 app.whenReady().then(() => {
   startBackend()
   createWindow()
+  setupAutoUpdater()
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
@@ -281,3 +379,20 @@ ipcMain.handle('save-settings', async (_event, settings) => {
 })
 
 ipcMain.handle('get-backend-status', () => backendStatus)
+
+ipcMain.handle('get-update-status', () => updateStatus)
+
+ipcMain.handle('install-update', () => {
+  if (updateStatus.state !== 'downloaded') return false
+  stopBackend()
+  autoUpdater.quitAndInstall()
+  return true
+})
+
+// 저사양 기기 안내(RAM 기반 로컬 모델 추천)에 사용
+ipcMain.handle('get-system-info', () => ({
+  platform: process.platform,
+  arch: process.arch,
+  totalMemGB: Math.round(os.totalmem() / (1024 ** 3)),
+  cpuCount: os.cpus().length,
+}))

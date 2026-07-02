@@ -7,6 +7,7 @@
 - **하이브리드 RAG** — BGE-M3 임베딩 + ms-marco 리랭커, ChromaDB 저장
 - **인용 추적** — 답변마다 출처 논문과 페이지 표시
 - **선택적 클라우드 AI** — Anthropic Claude, OpenAI, Google Gemini, Groq 지원
+- **자동 업데이트** — 새 버전이 GitHub Releases에 올라오면 앱이 자동으로 받아 적용
 
 ## 다운로드
 
@@ -53,6 +54,18 @@ API 키가 있다면 좌측 하단 ⚙️ 설정에서 Claude / Gemini 등으로
 
 [Ollama](https://ollama.com) (qwen3:8b 이상) 권장 — 없으면 API 키 필요
 
+> RAM 16GB 미만 기기에서는 로컬 모델 대신 클라우드 API 키(Claude/Gemini 등) 사용을
+> 권장합니다. 앱이 기기 사양을 감지해 설치 가능한 모델을 안내합니다.
+
+## 문제 해결
+
+앱이 비정상 동작하면 로그 파일을 확인하세요.
+
+- macOS: `~/Library/Logs/CLIO/main.log`
+- Windows: `%USERPROFILE%\AppData\Roaming\CLIO\logs\main.log`
+
+백엔드가 예기치 않게 종료되면 자동으로 재시작합니다 (최대 5회).
+
 ## 개발자용 실행
 
 ```bash
@@ -74,3 +87,11 @@ npm run dev
 bash build.sh   # macOS
 .\build.ps1     # Windows
 ```
+
+코드 서명·공증·릴리스 절차는 [docs/RELEASE.md](docs/RELEASE.md)를 참고하세요.
+
+## 문서
+
+- [docs/RELEASE.md](docs/RELEASE.md) — 코드 서명, 공증, 자동 업데이트 배포 절차
+- [docs/COMMERCIALIZATION.md](docs/COMMERCIALIZATION.md) — 상업화 체크리스트
+- [docs/PRIVACY_POLICY.md](docs/PRIVACY_POLICY.md) — 개인정보처리방침 초안

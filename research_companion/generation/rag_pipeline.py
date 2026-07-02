@@ -7,7 +7,12 @@ import structlog
 
 from generation.citation_formatter import compute_confidence, format_citations
 from generation.prompt_builder import build_messages
-from generation.providers import BaseLLMProvider, build_provider
+from generation.providers import (
+    BaseLLMProvider,
+    build_fallback_provider,
+    build_provider,
+    is_local_provider,
+)
 from retrieval.hybrid_search import HybridSearch, SearchFilters
 from retrieval.reranker import Reranker
 
@@ -68,6 +73,63 @@ def _enriched_citations(results: list[dict], llm_citations: list[dict] | None = 
     return enriched
 
 
+def _friendly_llm_error(provider: BaseLLMProvider, exc: Exception) -> str:
+    if is_local_provider(provider):
+        return (
+            "로컬 AI(Ollama)에 연결할 수 없습니다. Ollama 앱이 실행 중인지 확인하거나, "
+            f"좌측 하단 ⚙️ 설정에서 클라우드 API 키를 등록해 주세요. (원인: {exc})"
+        )
+    return f"AI 응답 오류: {exc}"
+
+
+class _AnswerStreamParser:
+    """LLM이 내보내는 JSON 스트림에서 "answer" 필드 텍스트만 실시간 추출."""
+
+    _PREFIX = '"answer": "'
+
+    def __init__(self) -> None:
+        self._buf = ""
+        self._in_answer = False
+        self._escaped = False
+        self.answer_done = False
+
+    def feed(self, chunk: str) -> str:
+        if self.answer_done:
+            return ""
+
+        if not self._in_answer:
+            self._buf += chunk
+            idx = self._buf.find(self._PREFIX)
+            if idx == -1:
+                return ""
+            self._in_answer = True
+            chunk = self._buf[idx + len(self._PREFIX):]
+            self._buf = ""
+
+        out: list[str] = []
+        for ch in chunk:
+            if self._escaped:
+                if ch == "n":
+                    out.append("\n")
+                elif ch == "t":
+                    out.append("\t")
+                elif ch == '"':
+                    out.append('"')
+                elif ch == "\\":
+                    out.append("\\")
+                else:
+                    out.append(ch)
+                self._escaped = False
+            elif ch == "\\":
+                self._escaped = True
+            elif ch == '"':
+                self.answer_done = True
+                break
+            else:
+                out.append(ch)
+        return "".join(out)
+
+
 def parse_llm_response(raw: str) -> dict:
     match = re.search(r"```json\s*(.*?)\s*```", raw, re.DOTALL)
     if match:
@@ -120,7 +182,28 @@ class RAGPipeline:
         log.info("rag_calling_llm", query=query[:80], sources=len(results),
                  provider=type(self._provider).__name__, model=getattr(self._provider, 'model', '?'))
 
-        raw_text = self._provider.complete(system, messages, _MAX_TOKENS)
+        try:
+            raw_text = self._provider.complete(system, messages, _MAX_TOKENS)
+        except Exception as exc:
+            log.error("rag_llm_error", provider=type(self._provider).__name__, error=str(exc))
+            fallback = build_fallback_provider(self._provider)
+            if fallback is None:
+                return {
+                    "answer": _friendly_llm_error(self._provider, exc),
+                    "citations": [],
+                    "confidence": confidence,
+                }
+            log.info("rag_llm_fallback", fallback=type(fallback).__name__,
+                     model=getattr(fallback, "model", "?"))
+            try:
+                raw_text = fallback.complete(system, messages, _MAX_TOKENS)
+            except Exception as fallback_exc:
+                log.error("rag_llm_fallback_error", error=str(fallback_exc))
+                return {
+                    "answer": _friendly_llm_error(self._provider, exc),
+                    "citations": [],
+                    "confidence": confidence,
+                }
 
         try:
             parsed = parse_llm_response(raw_text)
@@ -156,59 +239,42 @@ class RAGPipeline:
         yield {"type": "sources", "sources": _source_preview(results)}
 
         system, messages = build_messages(query, results, conversation_history)
-        log.info("rag_streaming_llm", query=query[:80], sources=len(results),
-                 provider=type(self._provider).__name__, model=getattr(self._provider, 'model', '?'))
+
+        # 1차: 설정된 provider, 실패 시(토큰을 하나도 못 받았을 때만) 클라우드 폴백 1회.
+        providers: list[BaseLLMProvider] = [self._provider]
+        fallback = build_fallback_provider(self._provider)
+        if fallback is not None:
+            providers.append(fallback)
 
         full_text = ""
-        _PREFIX = '"answer": "'
-        _buf = ""
-        _in_answer = False
-        _escaped = False
-        _answer_done = False
-
-        try:
-          stream_iter = self._provider.stream_text(system, messages, _MAX_TOKENS)
-        except Exception as exc:
-            log.error("rag_stream_init_error", error=str(exc))
-            yield {"type": "error", "answer": f"AI 응답 오류: {exc}", "citations": [], "confidence": "no_source"}
-            return
-
-        async for chunk in stream_iter:
-            full_text += chunk
-
-            if _answer_done:
-                continue
-
-            if not _in_answer:
-                _buf += chunk
-                idx = _buf.find(_PREFIX)
-                if idx != -1:
-                    _in_answer = True
-                    _buf = _buf[idx + len(_PREFIX):]
-                    chunk = _buf
-                    _buf = ""
-                else:
-                    continue
-
-            out = []
-            for ch in chunk:
-                if _escaped:
-                    if ch == 'n':    out.append('\n')
-                    elif ch == 't':  out.append('\t')
-                    elif ch == '"':  out.append('"')
-                    elif ch == '\\': out.append('\\')
-                    else:            out.append(ch)
-                    _escaped = False
-                elif ch == '\\':
-                    _escaped = True
-                elif ch == '"':
-                    _answer_done = True
-                    break
-                else:
-                    out.append(ch)
-
-            if out:
-                yield {"type": "token", "text": "".join(out)}
+        for attempt, provider in enumerate(providers):
+            log.info("rag_streaming_llm", query=query[:80], sources=len(results),
+                     provider=type(provider).__name__, model=getattr(provider, 'model', '?'),
+                     attempt=attempt + 1)
+            full_text = ""
+            parser = _AnswerStreamParser()
+            emitted = False
+            try:
+                async for chunk in provider.stream_text(system, messages, _MAX_TOKENS):
+                    full_text += chunk
+                    text = parser.feed(chunk)
+                    if text:
+                        emitted = True
+                        yield {"type": "token", "text": text}
+                break  # 스트리밍 성공
+            except Exception as exc:
+                log.error("rag_stream_error", provider=type(provider).__name__, error=str(exc))
+                is_last = attempt == len(providers) - 1
+                if emitted or is_last:
+                    # 이미 토큰을 내보냈으면 provider를 바꿔 다시 시작할 수 없다
+                    yield {
+                        "type": "error",
+                        "answer": _friendly_llm_error(self._provider, exc),
+                        "citations": [],
+                        "confidence": "no_source",
+                    }
+                    return
+                log.info("rag_stream_fallback", fallback=type(providers[attempt + 1]).__name__)
 
         try:
             parsed = parse_llm_response(full_text)

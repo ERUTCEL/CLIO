@@ -4,6 +4,7 @@ import Chat from './pages/Chat'
 import Library from './pages/Library'
 import BrandMark from './components/BrandMark'
 import SettingsModal from './components/SettingsModal'
+import UpdateBanner from './components/UpdateBanner'
 
 const BACKEND = window.api?.backendUrl || '/api'
 const POLL_MS = 1500
@@ -98,6 +99,7 @@ export default function App() {
         {page === 'library' && <Library backend={BACKEND} />}
       </div>
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <UpdateBanner />
     </div>
   )
 }

@@ -30,7 +30,21 @@ echo "  ✓ $(ls -lh "$ROOT/app/backend/")"
 echo ""
 echo "▸ Step 3: Build Electron app"
 cd "$ROOT/app"
-npm run build
+
+# 코드 서명/공증: 자격증명 env가 있을 때만 활성화 (docs/RELEASE.md 참고)
+BUILDER_FLAGS=()
+if [[ "$(uname -s)" == "Darwin" ]]; then
+  if [[ -n "${APPLE_ID:-}" && -n "${APPLE_APP_SPECIFIC_PASSWORD:-}" && -n "${APPLE_TEAM_ID:-}" ]]; then
+    echo "  ✓ Apple 공증 자격증명 감지 → 서명 + 공증 활성화"
+    BUILDER_FLAGS+=(--config.mac.notarize=true)
+  else
+    echo "  ⚠ APPLE_ID / APPLE_APP_SPECIFIC_PASSWORD / APPLE_TEAM_ID 미설정"
+    echo "    → 공증 없이 빌드합니다. 사용자는 Gatekeeper 경고를 보게 됩니다."
+    echo "    → 설정 방법: docs/RELEASE.md"
+  fi
+fi
+
+npm run build -- "${BUILDER_FLAGS[@]}"
 
 echo ""
 echo "✅ Build complete → app/dist-electron/"
