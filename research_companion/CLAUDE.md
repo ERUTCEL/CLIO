@@ -48,8 +48,6 @@ Key invariants:
 | `retrieval/metadata_db.py` | SQLite document registry |
 | `generation/rag_pipeline.py` | search → rerank → Claude API |
 | `generation/prompt_builder.py` | Loads `RAG_SYSTEM_PROMPT.md`, builds context block |
-| `generation/history_prompts.py` | Loads Korean history analysis templates from `prompts/korean_history/` |
-| `prompts/korean_history/` | Korean history analysis prompt templates (causal, compare, context, graph, hanja preprocess) |
 | `generation/citation_formatter.py` | Formats citations; computes confidence level |
 | `api/` | FastAPI app — `/ingest`, `/search`, `/chat`, `/health` |
 
