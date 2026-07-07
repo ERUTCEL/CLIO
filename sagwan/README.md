@@ -44,7 +44,14 @@ sagwan graph --docs examples/donghak/ --focal-person "전봉준" --time-range "1
 
 # 한문 사료 전처리
 sagwan hanja --input scan_ocr.txt --source-name "매천야록" --author "황현"
+
+# HTML 사료 파일을 편집 가능한 JSON 초안으로 변환 (예: 바탕화면에 모아둔 사료 HTML)
+sagwan ingest-html ~/Desktop/사료/*.html --out examples/my_sources/
 ```
+
+`ingest-html`은 `<title>`을 사료명으로, 본문 텍스트를 원문으로 추출해 JSON 초안을
+생성합니다. 작성자·시기·유형 등 메타데이터는 비어 있으므로, 생성된 JSON을 열어
+직접 채운 뒤 다른 모드의 `--docs`로 사용하십시오.
 
 공통 옵션: `--model` (기본 `claude-opus-4-8`), `--max-tokens` (기본 64000),
 `-o/--output 결과.md`, `-q/--quiet` (스트리밍 끄기).
@@ -101,6 +108,7 @@ sagwan/
     prompts/       # 분석 프롬프트 템플릿 ([SYSTEM]/[USER] 구조)
     templates.py   # 템플릿 로드·섹션 분리·플레이스홀더 치환
     documents.py   # SourceDocument 모델 + [DOC-N] 블록 포맷
+    html_ingest.py # HTML 사료 파일 → SourceDocument JSON 초안 변환
     analyzer.py    # Claude API 호출 (스트리밍, adaptive thinking, prompt caching)
     cli.py         # sagwan 명령
   tests/

@@ -6,6 +6,7 @@ from pathlib import Path
 
 from sagwan.analyzer import DEFAULT_MAX_TOKENS, DEFAULT_MODEL, HistoryAnalyzer
 from sagwan.documents import load_documents
+from sagwan.html_ingest import write_json_draft
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -56,6 +57,14 @@ def build_parser() -> argparse.ArgumentParser:
     hanja.add_argument("--reference", default="")
     hanja.add_argument("--purpose", default="역사 분석 RAG 저장")
 
+    ingest = sub.add_parser(
+        "ingest-html", help="HTML 사료 파일을 편집 가능한 JSON 초안으로 변환"
+    )
+    ingest.add_argument("files", nargs="+", help="변환할 .html 파일 경로")
+    ingest.add_argument(
+        "--out", type=Path, default=Path("."), help="JSON 초안을 저장할 디렉토리"
+    )
+
     return parser
 
 
@@ -68,6 +77,13 @@ def _load_single(path: str) -> "SourceDocument":
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+
+    if args.mode == "ingest-html":
+        for file in args.files:
+            out = write_json_draft(file, args.out)
+            print(f"{file} → {out}", file=sys.stderr)
+        return 0
+
     analyzer = HistoryAnalyzer(model=args.model, max_tokens=args.max_tokens)
 
     on_text = None
