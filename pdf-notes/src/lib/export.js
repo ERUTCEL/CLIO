@@ -51,11 +51,11 @@ export function drawAnnotations(ctx, data) {
   }
   for (const t of data.texts) {
     if (!t.text.trim()) continue
-    ctx.font = `${t.size}px system-ui, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif`
+    ctx.font = `${t.bold ? 'bold ' : ''}${t.size}px system-ui, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif`
     const lines = wrapLines(ctx, t.text, t.w - 8)
     const lh = t.size * 1.35
-    if (t.ai) {
-      ctx.fillStyle = 'rgba(255,255,255,0.88)'
+    if (t.ai || t.bg) {
+      ctx.fillStyle = t.bg ? '#ffffff' : 'rgba(255,255,255,0.88)'
       ctx.fillRect(t.x, t.y, t.w, lines.length * lh + 8)
     }
     ctx.fillStyle = t.ai ? (NOTE_TEXT_COLOR[t.ai] || t.color) : t.color

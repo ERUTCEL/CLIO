@@ -87,3 +87,18 @@ export function locateQuote(items, quote) {
     return [x0, it.y, x1 - x0, it.h]
   })
 }
+
+/** Pages with (almost) no text layer are treated as scans/images. */
+export const isImagePage = text => text.replace(/\s/g, '').length < 20
+
+/** Render a page to a base64 JPEG for vision models. */
+export async function renderPageImage(pdf, pageNumber, maxDim = 1568) {
+  const page = await pdf.getPage(pageNumber)
+  const base = page.getViewport({ scale: 1 })
+  const vp = page.getViewport({ scale: maxDim / Math.max(base.width, base.height) })
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.round(vp.width)
+  canvas.height = Math.round(vp.height)
+  await page.render({ canvas, canvasContext: canvas.getContext('2d'), viewport: vp }).promise
+  return canvas.toDataURL('image/jpeg', 0.85).split(',')[1]
+}

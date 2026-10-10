@@ -28,26 +28,37 @@ function PdfCanvas({ pdf, pageNumber, scale, size, visible }) {
   return <canvas ref={ref} className="pdf-canvas" style={{ width: size.width * scale, height: size.height * scale }} />
 }
 
+// New boxes inherit the last style the user picked.
+const lastStyle = { size: 14, bold: false, bg: false }
+
 function TextBox({ box, scale, editable, autoFocus, onChange, onDelete, onBeginEdit }) {
   const dragRef = useRef(null)
 
-  const startDrag = e => {
+  const startDrag = mode => e => {
     e.preventDefault()
     e.stopPropagation()
     e.currentTarget.setPointerCapture(e.pointerId)
     onBeginEdit()
-    dragRef.current = { sx: e.clientX, sy: e.clientY, x: box.x, y: box.y }
+    dragRef.current = { mode, sx: e.clientX, sy: e.clientY, x: box.x, y: box.y, w: box.w }
   }
   const moveDrag = e => {
     const d = dragRef.current
     if (!d) return
-    onChange({ ...box, x: d.x + (e.clientX - d.sx) / scale, y: d.y + (e.clientY - d.sy) / scale })
+    const dx = (e.clientX - d.sx) / scale
+    const dy = (e.clientY - d.sy) / scale
+    onChange(d.mode === 'move' ? { ...box, x: d.x + dx, y: d.y + dy } : { ...box, w: Math.max(40, d.w + dx) })
+  }
+  const endDrag = () => (dragRef.current = null)
+  const restyle = patch => {
+    onBeginEdit()
+    Object.assign(lastStyle, patch)
+    onChange({ ...box, ...patch })
   }
 
   const color = box.ai ? NOTE_TEXT_COLOR[box.ai] || box.color : box.color
   return (
     <div
-      className={`textbox ${box.ai ? 'ai-note' : ''} ${editable ? 'editable' : ''}`}
+      className={`textbox ${box.ai ? 'ai-note' : ''} ${box.bg ? 'whiteout' : ''} ${editable ? 'editable' : ''}`}
       style={{
         left: box.x * scale,
         top: box.y * scale,
@@ -55,12 +66,18 @@ function TextBox({ box, scale, editable, autoFocus, onChange, onDelete, onBeginE
         borderColor: box.ai ? MARK_COLORS[box.ai] : undefined,
       }}
       onPointerDown={e => editable && e.stopPropagation()}
+      onDoubleClick={e => e.stopPropagation()}
     >
       {editable && (
-        <div className="textbox-bar">
-          <span className="grip" onPointerDown={startDrag} onPointerMove={moveDrag}
-            onPointerUp={() => (dragRef.current = null)} title="드래그해서 이동">⠿</span>
-          <button onClick={onDelete} title="삭제">×</button>
+        <div className="textbox-bar" onPointerDown={e => e.preventDefault()}>
+          <span className="grip" onPointerDown={startDrag('move')} onPointerMove={moveDrag} onPointerUp={endDrag}
+            title="드래그해서 이동">⠿</span>
+          <button title="글자 작게" onClick={() => restyle({ size: Math.max(6, box.size - 2) })}>A−</button>
+          <button title="글자 크게" onClick={() => restyle({ size: Math.min(72, box.size + 2) })}>A+</button>
+          <button title="굵게" className={box.bold ? 'on' : ''} onClick={() => restyle({ bold: !box.bold })}><b>B</b></button>
+          <button title="흰 배경 (스캔된 글자 가리고 위에 쓰기)" className={box.bg ? 'on' : ''}
+            onClick={() => restyle({ bg: !box.bg })}>▭</button>
+          <button className="del" onClick={onDelete} title="삭제">×</button>
         </div>
       )}
       <textarea
@@ -69,9 +86,14 @@ function TextBox({ box, scale, editable, autoFocus, onChange, onDelete, onBeginE
         autoFocus={autoFocus}
         placeholder="타이핑..."
         onFocus={onBeginEdit}
+        onKeyDown={e => e.key === 'Escape' && e.currentTarget.blur()}
         onChange={e => onChange({ ...box, text: e.target.value })}
-        style={{ fontSize: box.size * scale, color, lineHeight: 1.35 }}
+        style={{ fontSize: box.size * scale, color, lineHeight: 1.35, fontWeight: box.bold ? 700 : 400 }}
       />
+      {editable && (
+        <span className="resize" title="드래그해서 폭 조절" onPointerDown={startDrag('resize')}
+          onPointerMove={moveDrag} onPointerUp={endDrag} />
+      )}
     </div>
   )
 }
@@ -92,7 +114,7 @@ function PageView({ pdf, pageNumber, size, scale, tool, color, width, penOnly, d
   }, [])
 
   const toPage = e => {
-    const r = svgRef.current.getBoundingClientRect()
+    const r = wrapRef.current.getBoundingClientRect()
     return [(e.clientX - r.left) / scale, (e.clientY - r.top) / scale]
   }
 
@@ -104,6 +126,20 @@ function PageView({ pdf, pageNumber, size, scale, tool, color, width, penOnly, d
     return { ...base, strokes, marks }
   }
 
+  const createText = (px, py) => {
+    onSnapshot()
+    const w = Math.min(260, size.width - px - 4)
+    const box = { id: uid(), x: px, y: py - lastStyle.size * 0.7, w: Math.max(60, w), text: '', color, ...lastStyle }
+    onUpdate(pageNumber, { ...page, texts: [...page.texts, box] })
+    setFocusId(box.id)
+  }
+
+  const onDoubleClick = e => {
+    // In hand mode, double-click anywhere (including scanned images) to start typing.
+    if (tool !== 'hand') return
+    createText(...toPage(e))
+  }
+
   const onPointerDown = e => {
     if (!DRAW_TOOLS.has(tool) || e.button > 0) return
     if (penOnly && e.pointerType === 'touch') return
@@ -111,10 +147,7 @@ function PageView({ pdf, pageNumber, size, scale, tool, color, width, penOnly, d
     const [px, py] = toPage(e)
 
     if (tool === 'text') {
-      onSnapshot()
-      const box = { id: uid(), x: px, y: py - 10, w: 220, text: '', color, size: 14 }
-      onUpdate(pageNumber, { ...page, texts: [...page.texts, box] })
-      setFocusId(box.id)
+      createText(px, py)
       return
     }
 
@@ -177,7 +210,7 @@ function PageView({ pdf, pageNumber, size, scale, tool, color, width, penOnly, d
   )
 
   return (
-    <div ref={wrapRef} className={`page ${flash ? 'flash' : ''}`} data-page={pageNumber}
+    <div ref={wrapRef} className={`page ${flash ? 'flash' : ''}`} data-page={pageNumber} onDoubleClick={onDoubleClick}
       style={{ width: size.width * scale, height: size.height * scale }}>
       <PdfCanvas pdf={pdf} pageNumber={pageNumber} scale={scale} size={size} visible={visible} />
       <svg

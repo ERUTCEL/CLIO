@@ -16,7 +16,17 @@ const SYSTEM = `너는 대학원생의 PDF 필기 보조다. 학생이 교수님
 - color: 중요=yellow, 수정 필요=red, 참고=blue, 아이디어=green, 질문=pink.
 - todos: 교수님이 시킨 할 일(과제, 실험, 수정 요청)이 있으면 넣고, 없으면 빈 배열.
 - summary: 말씀의 핵심 한 줄 요약.
+- box: 이미지로 주어진 페이지(스캔본)일 때만 쓴다. quote에는 이미지에서 읽은 문구를 적고,
+  box에는 그 문구가 있는 영역을 이미지 왼쪽 위 기준 0~1000 비율 좌표(x, y, w, h)로 적는다.
+  텍스트로 주어진 페이지이거나 위치를 특정할 수 없으면 box는 모두 0.
 말씀 하나가 여러 위치에 해당하면 annotation을 여러 개 만든다.`
+
+const BOX_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['x', 'y', 'w', 'h'],
+  properties: { x: { type: 'number' }, y: { type: 'number' }, w: { type: 'number' }, h: { type: 'number' } },
+}
 
 const SCHEMA = {
   type: 'object',
@@ -29,13 +39,14 @@ const SCHEMA = {
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['page', 'quote', 'note', 'kind', 'color'],
+        required: ['page', 'quote', 'note', 'kind', 'color', 'box'],
         properties: {
           page: { type: 'integer' },
           quote: { type: 'string' },
           note: { type: 'string' },
           kind: { type: 'string', enum: ['highlight', 'underline', 'note'] },
           color: { type: 'string', enum: ['yellow', 'green', 'blue', 'pink', 'red'] },
+          box: BOX_SCHEMA,
         },
       },
     },
@@ -45,17 +56,24 @@ const SCHEMA = {
 
 /**
  * Ask Claude to turn a professor's remark into annotations for the given pages.
- * pages: [{ page, text }]
+ * pages: [{ page, text, image? }] — image is a base64 JPEG for scanned pages
  */
 export async function applyRemark({ apiKey, model, remark, pages, currentPage }) {
   if (!apiKey) throw new Error('설정에서 Anthropic API 키를 먼저 입력해 주세요.')
   // The key never leaves this browser except to api.anthropic.com.
   const client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true })
 
-  const context = pages
-    .map(p => `[page ${p.page}]\n${p.text || '(텍스트 없음 — 스캔본일 수 있음)'}`)
-    .join('\n\n')
-  const user = `현재 보고 있는 페이지: ${currentPage}\n\n<pdf>\n${context}\n</pdf>\n\n교수님 말씀:\n${remark.trim()}`
+  // Text pages go in as text; scanned pages (no text layer) go in as images.
+  const content = [{ type: 'text', text: `현재 보고 있는 페이지: ${currentPage}\n\nPDF 내용:` }]
+  for (const p of pages) {
+    if (p.image) {
+      content.push({ type: 'text', text: `[page ${p.page}] (스캔 이미지)` })
+      content.push({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: p.image } })
+    } else {
+      content.push({ type: 'text', text: `[page ${p.page}]\n${p.text}` })
+    }
+  }
+  content.push({ type: 'text', text: `교수님 말씀:\n${remark.trim()}` })
 
   // Haiku has no server-side refusal fallback; Opus/Sonnet use the default routing.
   const fallback = model === 'claude-haiku-5-5'
@@ -66,7 +84,7 @@ export async function applyRemark({ apiKey, model, remark, pages, currentPage })
     model,
     max_tokens: 16000,
     system: SYSTEM,
-    messages: [{ role: 'user', content: user }],
+    messages: [{ role: 'user', content }],
     output_config: { effort: 'medium', format: { type: 'json_schema', schema: SCHEMA } },
     ...fallback,
   })

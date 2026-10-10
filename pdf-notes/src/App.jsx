@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import PageView from './components/PageView'
 import SidePanel from './components/SidePanel'
-import { openPdf, pageText, pageTextItems, locateQuote } from './lib/pdf'
+import { openPdf, pageText, pageTextItems, locateQuote, isImagePage, renderPageImage } from './lib/pdf'
+import { imagesToPdf } from './lib/imageToPdf'
 import { applyRemark, describeError } from './lib/ai'
 import { emptyPage, uid } from './lib/ink'
 import { PEN_COLORS, HIGHLIGHT_COLORS } from './lib/colors'
@@ -10,6 +11,7 @@ import * as store from './lib/storage'
 
 const SETTINGS_KEY = 'pdf-notes.settings'
 const newDoc = () => ({ pages: {}, memo: '', todos: [], aiLog: [] })
+const MAX_IMAGE_PAGES = 20
 
 function loadSettings() {
   try {
@@ -26,22 +28,32 @@ function Home({ onOpen }) {
 
   useEffect(() => { store.listRecent().then(setRecent).catch(() => {}) }, [])
 
-  const openFile = async file => {
-    if (!file || !/\.pdf$/i.test(file.name)) return
-    onOpen({ name: file.name, bytes: new Uint8Array(await file.arrayBuffer()) })
+  const openFiles = async fileList => {
+    const files = [...(fileList || [])]
+    const pdf = files.find(f => /\.pdf$/i.test(f.name))
+    if (pdf) return onOpen({ name: pdf.name, bytes: new Uint8Array(await pdf.arrayBuffer()) })
+    const images = files.filter(f => f.type.startsWith('image/'))
+    if (!images.length) return
+    try {
+      const name = images[0].name.replace(/\.[^.]+$/, '') + (images.length > 1 ? ` 외 ${images.length - 1}장` : '') + '.pdf'
+      onOpen({ name, bytes: await imagesToPdf(images) })
+    } catch (err) {
+      alert(`이미지를 열 수 없습니다: ${err.message}`)
+    }
   }
 
   return (
     <div className={`home ${dragging ? 'dragging' : ''}`}
       onDragOver={e => { e.preventDefault(); setDragging(true) }}
       onDragLeave={() => setDragging(false)}
-      onDrop={e => { e.preventDefault(); setDragging(false); openFile(e.dataTransfer.files[0]) }}>
+      onDrop={e => { e.preventDefault(); setDragging(false); openFiles(e.dataTransfer.files) }}>
       <div className="home-card">
         <h1>PDF 필기노트</h1>
         <p>PDF 위에 펜으로 쓰고, 타이핑하고, 교수님 말씀을 AI로 바로 필기에 반영하세요.</p>
-        <button className="btn primary big" onClick={() => inputRef.current.click()}>PDF 열기</button>
-        <input ref={inputRef} type="file" accept="application/pdf" hidden onChange={e => openFile(e.target.files[0])} />
-        <p className="muted">또는 PDF 파일을 여기로 끌어다 놓기</p>
+        <button className="btn primary big" onClick={() => inputRef.current.click()}>PDF · 이미지 열기</button>
+        <input ref={inputRef} type="file" accept="application/pdf,image/*" multiple hidden
+          onChange={e => openFiles(e.target.files)} />
+        <p className="muted">스캔본 PDF, 사진(JPG·PNG)도 됩니다. 이미지 여러 장을 고르면 한 노트로 묶어요.<br />파일을 여기로 끌어다 놓아도 됩니다.</p>
         {recent.length > 0 && (
           <div className="recent">
             <h2>최근 문서</h2>
@@ -227,6 +239,11 @@ function Editor({ file, onClose }) {
     try {
       const pages = []
       for (let n = range[0]; n <= range[1]; n++) pages.push({ page: n, text: await pageText(pdf, n) })
+      const scanned = pages.filter(p => isImagePage(p.text))
+      if (scanned.length > MAX_IMAGE_PAGES) {
+        throw new Error(`스캔(이미지) 페이지가 ${scanned.length}쪽이라 한 번에 보내기엔 많습니다. 범위를 "현재 페이지"나 "앞뒤 2쪽"으로 좁혀 주세요.`)
+      }
+      for (const p of scanned) p.image = await renderPageImage(pdf, p.page)
       const result = await applyRemark({ apiKey: settings.apiKey, model: settings.model, remark, pages, currentPage })
 
       const logId = uid()
@@ -236,17 +253,26 @@ function Editor({ file, onClose }) {
         const size = loaded.sizes[a.page - 1]
         const pageData = { ...emptyPage(), ...nextPages[a.page] }
         const items = await pageTextItems(pdf, a.page)
-        const rects = a.quote ? locateQuote(items, a.quote) : []
+        let rects = a.quote && items.length ? locateQuote(items, a.quote) : []
+        const b = a.box
+        if (!rects.length && b && b.w > 0 && b.h > 0) {
+          // Scanned page: trust the model's box (0-1000 of the page image).
+          const sx = size.width / 1000
+          const sy = size.height / 1000
+          rects = [[b.x * sx, b.y * sy, Math.min(b.w, 1000 - b.x) * sx, Math.min(b.h, 1000 - b.y) * sy]]
+        }
         const marks = [...pageData.marks]
         const texts = [...pageData.texts]
         if (rects.length && a.kind !== 'note') marks.push({ id: uid(), logId, rects, kind: a.kind, color: a.color })
         if (a.note) {
-          // Prefer the right margin so the note doesn't cover the text; otherwise sit under the quote.
-          const textRight = items.length ? Math.max(...items.map(it => it.x + it.w)) : size.width / 2
-          const margin = size.width - textRight - 10
+          // Prefer the right margin so the note doesn't cover the text; otherwise sit beside/under the quote.
+          const contentRight = items.length
+            ? Math.max(...items.map(it => it.x + it.w))
+            : rects.length ? Math.max(...rects.map(r => r[0] + r[2])) : size.width
+          const margin = size.width - contentRight - 10
           let x, y, w
           if (margin >= 100) {
-            x = textRight + 6
+            x = contentRight + 6
             w = Math.min(220, margin)
             y = rects.length ? Math.min(...rects.map(r => r[1])) - 2 : 12
           } else {
