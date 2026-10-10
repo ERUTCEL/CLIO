@@ -1,0 +1,23 @@
+{
+  "name": "pdf-notes",
+  "version": "0.1.0",
+  "description": "PDF 위에 자유롭게 필기·타이핑하고, 교수님 말씀을 AI로 바로 필기에 적용하는 노트 앱",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.133.0",
+    "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "5.4.296",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^6.1.2",
+    "vite": "^8.3.4"
+  }
+}
